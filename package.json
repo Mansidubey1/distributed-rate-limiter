@@ -1,0 +1,27 @@
+{
+  "name": "token-bucket-rate-limiter-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Token Bucket & Sliding Window Distributed Rate Limiter Service",
+  "scripts": {
+    "dev": "npm run dev:backend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build": "npm run build:frontend && npm run build:backend",
+    "start": "npm start --prefix backend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "prisma:generate": "npm run prisma:generate --prefix backend",
+    "prisma:migrate": "npm run prisma:migrate --prefix backend",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --prefix backend",
+    "prisma:push": "npm run prisma:push --prefix backend",
+    "test": "npm test --prefix backend",
+    "test:watch": "npm run test:watch --prefix backend",
+    "test:unit": "npm run test:unit --prefix backend",
+    "test:integration": "npm run test:integration --prefix backend",
+    "test:concurrency": "npm run test:concurrency --prefix backend",
+    "test:distributed": "npm run test:distributed --prefix backend",
+    "test:load": "npm run test:load --prefix backend"
+  }
+}

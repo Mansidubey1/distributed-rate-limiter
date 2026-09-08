@@ -1,0 +1,47 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Client {
+  id                    String                 @id @default(uuid())
+  clientKey             String                 @unique @map("client_key")
+  algorithm             String                 @default("token_bucket") @map("algorithm")
+  requestsPerSecond     Float                  @map("requests_per_second")
+  burstSize             Float                  @map("burst_size")
+  windowSize            Float                  @default(1.0) @map("window_size")
+  totalRequests         Int                    @default(0) @map("total_requests")
+  allowedRequests       Int                    @default(0) @map("allowed_requests")
+  deniedRequests        Int                    @default(0) @map("denied_requests")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  bucketState           BucketState?
+  slidingWindowRequests SlidingWindowRequest[]
+
+  @@map("clients")
+}
+
+model BucketState {
+  id           String   @id @default(uuid())
+  clientId     String   @unique @map("client_id")
+  tokens       Float
+  lastRefillAt DateTime @default(now()) @map("last_refill_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("bucket_states")
+}
+
+model SlidingWindowRequest {
+  id          String   @id @default(uuid())
+  clientId    String   @map("client_id")
+  requestedAt DateTime @default(now()) @map("requested_at")
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, requestedAt])
+  @@map("sliding_window_requests")
+}

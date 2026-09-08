@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Limiter — Live Distributed Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0D0D0F;
+      --bg-sidebar: #121216;
+      --bg-card: #18181C;
+      --bg-card-hover: #202024;
+      --border-color: #2A2A30;
+      --border-accent: rgba(249, 115, 22, 0.35);
+      --text-main: #F4F4F5;
+      --text-secondary: #A1A1AA;
+      --text-muted: #71717A;
+      --accent-primary: #F97316;
+      --accent-hover: #FB923C;
+      --accent-cyan: #A855F7;
+      --accent-success: #22C55E;
+      --accent-danger: #EF4444;
+      --accent-warning: #F59E0B;
+      --accent-algorithm: #A855F7;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(249, 115, 22, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-success);
+      box-shadow: 0 0 8px var(--accent-success);
+    }
+
+    .badge-dot.warning {
+      background: var(--accent-warning);
+      box-shadow: 0 0 8px var(--accent-warning);
+    }
+
+    .badge-dot.danger {
+      background: var(--accent-danger);
+      box-shadow: 0 0 8px var(--accent-danger);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-primary), #4f46e5);
+      color: white;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--accent-danger);
+      border-color: rgba(244, 63, 94, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.25);
+    }
+
+    .btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .stat-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      font-family: var(--font-mono);
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .color-success { color: var(--accent-success); }
+    .color-danger { color: var(--accent-danger); }
+    .color-cyan { color: var(--accent-cyan); }
+    .color-primary { color: #818cf8; }
+
+    /* Layout Columns */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Card Panels */
+    .panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Canvas Chart */
+    .chart-container {
+      position: relative;
+      height: 200px;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      justify-content: flex-end;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-box {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    /* Interactive Rate Limit Tester */
+    .tester-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    select, input {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .burst-btn-group {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .test-result-box {
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      padding: 12px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .algo-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .algo-tb {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .algo-sw {
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: #111827;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Top Header -->
+    <header>
+      <div class="logo-group">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1>Rate Limiter Dashboard</h1>
+          <div class="subtitle">Distributed High-Throughput Token Bucket & Sliding Window Engine</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="badge">
+          <span class="badge-dot" id="system-health-dot"></span>
+          <span id="system-health-text">System Healthy</span>
+        </div>
+        <div class="badge" id="distributed-badge">
+          <span style="color: var(--accent-cyan)">Mode:</span>&nbsp;<span id="mode-text">Local (PostgreSQL)</span>
+        </div>
+        <div class="badge">
+          <span style="color: var(--text-muted)">Instance:</span>&nbsp;<span id="instance-id-text" style="font-family: var(--font-mono)">limiter-01</span>
+        </div>
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Create Client</button>
+      </div>
+    </header>
+
+    <!-- Global Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-title">Total Processed</div>
+        <div class="stat-value color-primary" id="stat-total">0</div>
+        <div class="stat-sub">Cumulative checks</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">Allowed Requests (200)</div>
+        <div class="stat-value color-success" id="stat-allowed">0</div>
+        <div class="stat-sub" id="stat-allow-pct">100.0% Allow Rate</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">Denied Requests (429)</div>
+        <div class="stat-value color-danger" id="stat-denied">0</div>
+        <div class="stat-sub">Rate limits enforced</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">Active Clients</div>
+        <div class="stat-value color-cyan" id="stat-clients">0</div>
+        <div class="stat-sub">Configured policies</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">Live Throughput</div>
+        <div class="stat-value" id="stat-rps" style="color: #f59e0b">0</div>
+        <div class="stat-sub">Current requests / sec</div>
+      </div>
+    </div>
+
+    <!-- Main Grid: Chart & Rate Limit Tester -->
+    <div class="dashboard-grid">
+      
+      <!-- Traffic Chart Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>📈 Real-Time Request Stream</span>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-box" style="background: #10b981"></div>
+              <span>200 ALLOW</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box" style="background: #f43f5e"></div>
+              <span>429 DENY</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="trafficCanvas"></canvas>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted); text-align: center;">
+          Live visual window stream (sampling every 1.5s)
+        </div>
+      </div>
+
+      <!-- Live Interactive Tester -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🎯 Live Rate Limit Tester</span>
+          </div>
+        </div>
+
+        <div class="tester-controls">
+          <div class="form-group">
+            <label>Select Target Client</label>
+            <select id="test-client-select">
+              <option value="">-- Loading Clients --</option>
+            </select>
+          </div>
+
+          <div class="burst-btn-group">
+            <button class="btn btn-secondary btn-sm" onclick="sendTestRequest(1)">1 Req</button>
+            <button class="btn btn-secondary btn-sm" onclick="sendTestRequest(10)">10 Burst</button>
+            <button class="btn btn-secondary btn-sm" onclick="sendTestRequest(50)">50 Burst</button>
+            <button class="btn btn-primary btn-sm" onclick="sendTestRequest(100)">100 Stress</button>
+          </div>
+
+          <div class="test-result-box" id="test-result-display">
+            <span style="color: var(--text-muted); text-align: center;">Select a client and fire requests to observe live atomic decisions</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Active Policies Table -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>🛡️ Configured Client Policies</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="fetchDashboardData()">🔄 Refresh</button>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Client Key</th>
+              <th>Algorithm</th>
+              <th>Rate / Limit</th>
+              <th>Burst / Window</th>
+              <th>Allowed</th>
+              <th>Denied</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clients-table-body">
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading clients...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Create/Edit Modal -->
+  <div class="modal-overlay" id="client-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 style="font-size: 18px; font-weight: 700;" id="modal-title">Create Client Policy</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+
+      <form id="client-form" onsubmit="handleSaveClient(event)">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label>Client Key</label>
+          <input type="text" id="modal-clientKey" placeholder="e.g. user-api-service" required>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label>Algorithm</label>
+          <select id="modal-algorithm" onchange="toggleAlgorithmFields()">
+            <option value="token_bucket">Token Bucket (Continuous Refill)</option>
+            <option value="sliding_window">Sliding Window (Strict Trailing Quota)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label id="label-rps">Requests Per Second (Refill Rate)</label>
+          <input type="number" id="modal-rps" min="1" step="any" value="10" required>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;" id="group-burst">
+          <label>Burst Capacity (Max Tokens)</label>
+          <input type="number" id="modal-burst" min="1" step="any" value="20">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;" id="group-window">
+          <label>Window Size (Seconds)</label>
+          <input type="number" id="modal-window" min="1" step="any" value="10">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Policy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let chartHistory = [];
+    const maxHistoryPoints = 25;
+    let prevTotal = 0;
+    let prevTimestamp = Date.now();
+
+    function initChart() {
+      for (let i = 0; i < maxHistoryPoints; i++) {
+        chartHistory.push({ allowed: 0, denied: 0 });
+      }
+      renderChart();
+    }
+
+    function renderChart() {
+      const canvas = document.getElementById('trafficCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio || 600;
+      canvas.height = rect.height * window.devicePixelRatio || 200;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width;
+      const h = canvas.height;
+      const step = w / (maxHistoryPoints - 1);
+
+      let maxVal = 10;
+      chartHistory.forEach(pt => {
+        const total = pt.allowed + pt.denied;
+        if (total > maxVal) maxVal = total;
+      });
+
+      // Draw Grid Lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i <= 3; i++) {
+        const y = h - (h * (i / 4));
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Draw Allowed Line (Green)
+      ctx.beginPath();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      chartHistory.forEach((pt, idx) => {
+        const x = idx * step;
+        const y = h - (pt.allowed / maxVal) * (h - 20) - 10;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw Denied Line (Red)
+      ctx.beginPath();
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 3;
+      chartHistory.forEach((pt, idx) => {
+        const x = idx * step;
+        const y = h - (pt.denied / maxVal) * (h - 20) - 10;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    async function fetchDashboardData() {
+      try {
+        // 1. Health
+        const healthRes = await fetch('/health');
+        if (healthRes.ok) {
+          const health = await healthRes.json();
+          document.getElementById('system-health-dot').className = health.status === 'ok' ? 'badge-dot' : 'badge-dot danger';
+          document.getElementById('system-health-text').innerText = health.status === 'ok' ? 'System Healthy' : 'System Degraded';
+          document.getElementById('instance-id-text').innerText = health.instanceId || 'limiter-01';
+          if (health.services && health.services.redis === 'healthy') {
+            document.getElementById('mode-text').innerText = 'Distributed (Redis)';
+          }
+        }
+
+        // 2. Metrics
+        const metricsRes = await fetch('/metrics');
+        if (metricsRes.ok) {
+          const metrics = await metricsRes.json();
+          document.getElementById('stat-total').innerText = Number(metrics.totalRequests).toLocaleString();
+          document.getElementById('stat-allowed').innerText = Number(metrics.allowedRequests).toLocaleString();
+          document.getElementById('stat-denied').innerText = Number(metrics.deniedRequests).toLocaleString();
+          document.getElementById('stat-clients').innerText = metrics.clients || 0;
+
+          const total = (metrics.allowedRequests + metrics.deniedRequests) || 1;
+          const allowRate = ((metrics.allowedRequests / total) * 100).toFixed(1);
+          document.getElementById('stat-allow-pct').innerText = `${allowRate}% Allow Rate`;
+
+          // RPS calculation
+          const now = Date.now();
+          const timeDiff = (now - prevTimestamp) / 1000;
+          if (timeDiff >= 1) {
+            const reqDiff = Math.max(0, metrics.totalRequests - prevTotal);
+            const rps = Math.round(reqDiff / timeDiff);
+            document.getElementById('stat-rps').innerText = rps;
+            
+            // Add to chart history
+            const allowedDiff = Math.max(0, metrics.allowedRequests - (prevAllowed || metrics.allowedRequests));
+            const deniedDiff = Math.max(0, metrics.deniedRequests - (prevDenied || metrics.deniedRequests));
+            chartHistory.shift();
+            chartHistory.push({ allowed: allowedDiff, denied: deniedDiff });
+            renderChart();
+
+            prevTotal = metrics.totalRequests;
+            prevAllowed = metrics.allowedRequests;
+            prevDenied = metrics.deniedRequests;
+            prevTimestamp = now;
+          }
+        }
+
+        // 3. Clients
+        const clientsRes = await fetch('/v1/admin/clients');
+        if (clientsRes.ok) {
+          const clients = await clientsRes.json();
+          renderClients(clients);
+        }
+      } catch (err) {
+        console.error('Failed to refresh dashboard data:', err);
+      }
+    }
+
+    let prevAllowed = 0;
+    let prevDenied = 0;
+
+    function renderClients(clients) {
+      const tbody = document.getElementById('clients-table-body');
+      const select = document.getElementById('test-client-select');
+      const currentSelected = select.value;
+
+      if (!clients || clients.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No clients configured yet. Click "+ Create Client" above!</td></tr>`;
+        select.innerHTML = `<option value="">No clients available</option>`;
+        return;
+      }
+
+      select.innerHTML = clients.map(c => `<option value="${c.clientKey}" ${c.clientKey === currentSelected ? 'selected' : ''}>${c.clientKey} (${c.algorithm})</option>`).join('');
+
+      tbody.innerHTML = clients.map(c => {
+        const isTb = c.algorithm === 'token_bucket';
+        const algoTag = isTb 
+          ? `<span class="algo-tag algo-tb">Token Bucket</span>` 
+          : `<span class="algo-tag algo-sw">Sliding Window</span>`;
+
+        return `
+          <tr>
+            <td style="font-family: var(--font-mono); font-weight: 600; color: #f8fafc;">${c.clientKey}</td>
+            <td>${algoTag}</td>
+            <td><strong>${c.requestsPerSecond}</strong> req/s</td>
+            <td>${isTb ? `Burst: ${c.burstSize}` : `Window: ${c.windowSize}s`}</td>
+            <td style="color: var(--accent-success); font-family: var(--font-mono)">${c.allowedRequests || 0}</td>
+            <td style="color: var(--accent-danger); font-family: var(--font-mono)">${c.deniedRequests || 0}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="selectAndTest('${c.clientKey}')">Test</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteClient('${c.clientKey}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function sendTestRequest(count = 1) {
+      const clientKey = document.getElementById('test-client-select').value;
+      const display = document.getElementById('test-result-display');
+      if (!clientKey) {
+        display.innerHTML = `<span style="color: var(--accent-danger)">Please select or create a client first</span>`;
+        return;
+      }
+
+      display.innerHTML = `<span style="color: var(--accent-cyan)">Firing ${count} request(s)...</span>`;
+
+      const startTime = performance.now();
+      const requests = Array.from({ length: count }, () => 
+        fetch('/v1/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientKey })
+        })
+      );
+
+      const responses = await Promise.all(requests);
+      const latency = (performance.now() - startTime).toFixed(1);
+
+      let allowed = 0;
+      let denied = 0;
+      let lastBody = null;
+      let lastHeaders = {};
+
+      for (const res of responses) {
+        if (res.status === 200) allowed++;
+        else if (res.status === 429) denied++;
+        try {
+          lastBody = await res.json();
+          lastHeaders['x-ratelimit-limit'] = res.headers.get('x-ratelimit-limit');
+          lastHeaders['x-ratelimit-remaining'] = res.headers.get('x-ratelimit-remaining');
+          lastHeaders['x-ratelimit-reset'] = res.headers.get('x-ratelimit-reset');
+        } catch (_) {}
+      }
+
+      display.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div><strong>${count} Sent:</strong> <span style="color: var(--accent-success)">${allowed} ALLOW</span>, <span style="color: var(--accent-danger)">${denied} DENY</span></div>
+          <span style="color: var(--text-muted)">${latency}ms total</span>
+        </div>
+        <div style="color: var(--text-muted)">
+          Remaining: <strong style="color: var(--text-main)">${lastBody?.remaining ?? lastHeaders['x-ratelimit-remaining'] ?? 0}</strong> / Limit: <strong>${lastBody?.limit ?? lastHeaders['x-ratelimit-limit'] ?? '-'}</strong> | Reset: <strong>${lastBody?.reset ?? lastHeaders['x-ratelimit-reset'] ?? '-'}</strong>
+        </div>
+      `;
+
+      fetchDashboardData();
+    }
+
+    function selectAndTest(clientKey) {
+      document.getElementById('test-client-select').value = clientKey;
+      sendTestRequest(1);
+    }
+
+    async function deleteClient(clientKey) {
+      if (!confirm(`Delete client '${clientKey}'?`)) return;
+      await fetch(`/v1/admin/clients/${clientKey}`, { method: 'DELETE' });
+      fetchDashboardData();
+    }
+
+    function openCreateModal() {
+      document.getElementById('client-modal').classList.add('active');
+      toggleAlgorithmFields();
+    }
+
+    function closeModal() {
+      document.getElementById('client-modal').classList.remove('active');
+    }
+
+    function toggleAlgorithmFields() {
+      const algo = document.getElementById('modal-algorithm').value;
+      const isTb = algo === 'token_bucket';
+      document.getElementById('group-burst').style.display = isTb ? 'flex' : 'none';
+      document.getElementById('group-window').style.display = isTb ? 'none' : 'flex';
+      document.getElementById('label-rps').innerText = isTb ? 'Requests Per Second (Refill Rate)' : 'Quota (Max Requests in Window)';
+    }
+
+    async function handleSaveClient(e) {
+      e.preventDefault();
+      const clientKey = document.getElementById('modal-clientKey').value.trim();
+      const algorithm = document.getElementById('modal-algorithm').value;
+      const requestsPerSecond = parseFloat(document.getElementById('modal-rps').value);
+      const burstSize = parseFloat(document.getElementById('modal-burst').value);
+      const windowSize = parseFloat(document.getElementById('modal-window').value);
+
+      const payload = {
+        clientKey,
+        algorithm,
+        requestsPerSecond,
+        burstSize: algorithm === 'token_bucket' ? burstSize : requestsPerSecond,
+        windowSize: algorithm === 'sliding_window' ? windowSize : 1.0,
+      };
+
+      const res = await fetch('/v1/admin/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        closeModal();
+        fetchDashboardData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to create client');
+      }
+    }
+
+    // Initialize
+    initChart();
+    fetchDashboardData();
+    setInterval(fetchDashboardData, 1500);
+    window.addEventListener('resize', renderChart);
+  </script>
+</body>
+</html>

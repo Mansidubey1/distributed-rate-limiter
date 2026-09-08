@@ -1,0 +1,17 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+backend/dist
+backend/node_modules
+backend/.env
+frontend/dist
+frontend/node_modules
+backend/public/dashboard-dist
+coverage
+.vscode
+.idea
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

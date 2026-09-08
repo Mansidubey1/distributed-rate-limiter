@@ -1,0 +1,51 @@
+{
+  "name": "token-bucket-rate-limiter",
+  "version": "1.0.0",
+  "description": "Standalone persistent and concurrency-safe Token Bucket Rate Limiter service",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build:lua": "node -e \"import('fs').then(fs => { fs.mkdirSync('dist/repositories/lua', { recursive: true }); fs.cpSync('src/repositories/lua', 'dist/repositories/lua', { recursive: true }); })\"",
+    "build": "tsc && npm run build:lua",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:push": "prisma db push",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:concurrency": "vitest run tests/concurrency",
+    "test:distributed": "tsx load-tests/distributed.ts",
+    "test:load": "tsx load-tests/single-instance.ts"
+  },
+  "keywords": [
+    "rate-limiter",
+    "token-bucket",
+    "fastify",
+    "prisma",
+    "postgresql"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@fastify/static": "^10.1.3",
+    "@prisma/client": "^6.4.1",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.1",
+    "ioredis": "^5.11.1"
+  },
+  "devDependencies": {
+    "@types/autocannon": "^7.12.7",
+    "@types/node": "^22.13.5",
+    "autocannon": "^8.0.0",
+    "ioredis-mock": "^8.13.1",
+    "prisma": "^6.4.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
