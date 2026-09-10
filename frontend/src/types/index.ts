@@ -150,6 +150,31 @@ export interface ChaosState {
   activeInjections: number;
 }
 
+export interface LiveRequestActivity {
+  id: string;
+  timestamp: number;
+  clientKey: string;
+  endpoint: string;
+  method: string;
+  status: number;
+  statusText: string;
+  latencyMs: number;
+  instanceId: string;
+  decision: 'ALLOW' | 'DENY';
+  algorithm?: AlgorithmType | string;
+  remaining?: number;
+  limit?: number;
+}
+
+export interface DashboardEvent {
+  id: string;
+  timestamp: number;
+  severity: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS';
+  clientKey?: string;
+  message: string;
+  category?: string;
+}
+
 export type EventSeverity = 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
 export type EventCategory = 'POLICY' | 'THROTTLE' | 'CLUSTER' | 'BENCHMARK' | 'CHAOS' | 'SECURITY' | 'SYSTEM';
 
@@ -164,6 +189,11 @@ export interface SystemEvent {
 }
 
 export type TabType =
+  | 'dashboard'
+  | 'apiclient'
+  | 'policies'
+  | 'analytics'
+  | 'infrastructure'
   | 'overview'
   | 'simulator'
   | 'tracing'
@@ -172,6 +202,8 @@ export type TabType =
   | 'benchmark'
   | 'chaos'
   | 'events'
-  | 'policies'
   | 'algorithms'
   | 'apihub';
+
+
+

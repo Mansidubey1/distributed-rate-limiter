@@ -110,15 +110,15 @@ body {
 
 /* Postman Top Header */
 .pm-header {
-  height: 50px;
-  min-height: 50px;
+  height: 56px;
+  min-height: 56px;
   background: var(--bg-sidebar);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  gap: 16px;
+  padding: 0 20px;
+  gap: 20px;
   user-select: none;
   z-index: 10;
 }
@@ -126,22 +126,23 @@ body {
 .pm-header-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 18px;
 }
 
 .pm-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 800;
   font-size: 15px;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+  text-decoration: none;
 }
 
 .pm-logo-icon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-algorithm));
   display: flex;
@@ -153,7 +154,7 @@ body {
 .pm-header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* Postman Main Body (Sidebar + Content + Console) */

@@ -1,25 +1,42 @@
 import React, { useState, useRef } from 'react';
 import {
   Flame,
-  Square
+  Square,
+  Activity,
+  Globe
 } from 'lucide-react';
 import { calculatePercentile, soundFX } from '../../utils/helpers';
+import { HttpMethod } from '../../types/postman';
 
 interface BurstModalProps {
   isOpen: boolean;
   onClose: () => void;
   targetUrl: string;
+  method?: HttpMethod;
   targetClientKey: string;
-  headers: Record<string, string>;
-  onBurstComplete: (summary: { total: number; allowed: number; denied: number; avgLatency: number; p95Latency: number }) => void;
+  headers?: Record<string, string>;
+  bodyJson?: string;
+  onBurstComplete: (summary: {
+    total: number;
+    allowed: number;
+    denied: number;
+    avgLatency: number;
+    p50Latency: number;
+    p95Latency: number;
+    p99Latency: number;
+    rps: number;
+    durationSec: string;
+  }) => void;
 }
 
 export const BurstModal: React.FC<BurstModalProps> = ({
   isOpen,
   onClose,
   targetUrl,
+  method = 'GET',
   targetClientKey,
-  headers,
+  headers = {},
+  bodyJson = '',
   onBurstComplete,
 }) => {
   const [burstCount, setBurstCount] = useState<number>(50);
@@ -29,13 +46,17 @@ export const BurstModal: React.FC<BurstModalProps> = ({
   const [sent, setSent] = useState<number>(0);
   const [allowed, setAllowed] = useState<number>(0);
   const [denied, setDenied] = useState<number>(0);
+  const [errors, setErrors] = useState<number>(0);
   const [completedSummary, setCompletedSummary] = useState<any>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
   if (!isOpen) return null;
 
-  const presets = [1, 10, 50, 100, 250, 500];
+  const presets = [10, 50, 100, 250, 500];
+
+  const isExternalUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
+  const isDirectCheck = targetUrl.includes('/v1/check');
 
   const handleRunBurst = async () => {
     setIsRunning(true);
@@ -43,6 +64,7 @@ export const BurstModal: React.FC<BurstModalProps> = ({
     setSent(0);
     setAllowed(0);
     setDenied(0);
+    setErrors(0);
     setCompletedSummary(null);
 
     soundFX.playBurst();
@@ -54,52 +76,91 @@ export const BurstModal: React.FC<BurstModalProps> = ({
     let sentCount = 0;
     let allowCount = 0;
     let denyCount = 0;
+    let errorCount = 0;
     const startTime = performance.now();
 
+    // Worker function
     const runWorker = async () => {
       while (!abort.signal.aborted && sentCount < burstCount) {
         sentCount++;
-        setSent(sentCount);
-        setProgress(Math.min(100, Math.floor((sentCount / burstCount) * 100)));
+        const currentCount = sentCount;
+        setSent(currentCount);
+        setProgress(Math.min(100, Math.floor((currentCount / burstCount) * 100)));
 
         const reqStart = performance.now();
         try {
-          const res = await fetch(targetUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...headers,
-            },
-            body: JSON.stringify({ clientKey: targetClientKey }),
-            signal: abort.signal,
-          });
+          let res: Response;
+
+          if (isExternalUrl && !targetUrl.includes('localhost:3000')) {
+            // Send through Gateway Proxy
+            let parsedBody: any = undefined;
+            if (bodyJson.trim()) {
+              try { parsedBody = JSON.parse(bodyJson); } catch (_) { parsedBody = bodyJson; }
+            }
+
+            res = await fetch('/v1/proxy', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                url: targetUrl,
+                method,
+                clientKey: targetClientKey,
+                headers,
+                body: parsedBody,
+              }),
+              signal: abort.signal,
+            });
+          } else {
+            // Direct /v1/check
+            res = await fetch('/v1/check', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...headers,
+              },
+              body: JSON.stringify({ clientKey: targetClientKey }),
+              signal: abort.signal,
+            });
+          }
 
           const latency = Number((performance.now() - reqStart).toFixed(2));
           recordedLatencies.push(latency);
 
-          if (res.status === 200) {
+          if (res.status === 200 || res.status === 201) {
             allowCount++;
             setAllowed(allowCount);
-          } else {
+          } else if (res.status === 429) {
             denyCount++;
             setDenied(denyCount);
+          } else {
+            errorCount++;
+            setErrors(errorCount);
           }
         } catch (err: any) {
           if (err.name === 'AbortError') break;
-          denyCount++;
-          setDenied(denyCount);
+          errorCount++;
+          setErrors(errorCount);
         }
       }
     };
 
-    const workers = Array.from({ length: Math.min(concurrency, burstCount) }, () => runWorker());
+    const workerCount = Math.min(concurrency, burstCount);
+    const workers = Array.from({ length: workerCount }, () => runWorker());
     await Promise.all(workers);
 
     const totalDurationMs = performance.now() - startTime;
+    const durationSec = Math.max(0.01, totalDurationMs / 1000);
+    const rps = Math.round(sentCount / durationSec);
+
     const avgLatency = recordedLatencies.length
       ? Number((recordedLatencies.reduce((a, b) => a + b, 0) / recordedLatencies.length).toFixed(2))
       : 0;
+
+    const p50Latency = calculatePercentile(recordedLatencies, 50);
     const p95Latency = calculatePercentile(recordedLatencies, 95);
+    const p99Latency = calculatePercentile(recordedLatencies, 99);
 
     setIsRunning(false);
     setProgress(100);
@@ -108,9 +169,13 @@ export const BurstModal: React.FC<BurstModalProps> = ({
       total: sentCount,
       allowed: allowCount,
       denied: denyCount,
+      errors: errorCount,
       avgLatency,
+      p50Latency,
       p95Latency,
-      durationSec: (totalDurationMs / 1000).toFixed(2),
+      p99Latency,
+      rps,
+      durationSec: durationSec.toFixed(2),
     };
     setCompletedSummary(summary);
     onBurstComplete(summary);
@@ -123,13 +188,17 @@ export const BurstModal: React.FC<BurstModalProps> = ({
     setIsRunning(false);
   };
 
+  const allowPercent = sent > 0 ? Math.round((allowed / sent) * 100) : 0;
+  const denyPercent = sent > 0 ? Math.round((denied / sent) * 100) : 0;
+
   return (
     <div className="modal-overlay">
-      <div className="modal-box">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+      <div className="modal-box" style={{ maxWidth: 540 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800 }}>
-            <Flame size={20} color="#A855F7" />
-            <span style={{ color: '#F4F4F5' }}>Send Requests (Burst Stress Runner)</span>
+            <Flame size={20} color="#F97316" />
+            <span style={{ color: '#F4F4F5' }}>Burst Traffic Stress Runner</span>
           </div>
           <button
             onClick={onClose}
@@ -139,7 +208,7 @@ export const BurstModal: React.FC<BurstModalProps> = ({
           </button>
         </div>
 
-        {/* Target Info */}
+        {/* Target Info Ribbon */}
         <div
           style={{
             background: '#121216',
@@ -150,16 +219,25 @@ export const BurstModal: React.FC<BurstModalProps> = ({
             fontSize: 12,
           }}
         >
-          <div style={{ color: '#71717A' }}>Target Client: <strong style={{ color: '#F4F4F5', fontFamily: 'var(--font-mono)' }}>{targetClientKey}</strong></div>
-          <div style={{ color: '#71717A', marginTop: 2 }}>Endpoint: <strong style={{ color: '#F97316', fontFamily: 'var(--font-mono)' }}>{targetUrl}</strong></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ color: '#71717A' }}>
+              Client Policy: <strong style={{ color: '#A855F7', fontFamily: 'var(--font-mono)' }}>{targetClientKey}</strong>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3B82F6', fontSize: 11, fontWeight: 700 }}>
+              <Globe size={11} /> {isDirectCheck ? 'Raw Check Mode' : 'Gateway Proxy Mode'}
+            </span>
+          </div>
+          <div style={{ color: '#71717A', wordBreak: 'break-all' }}>
+            Target: <strong style={{ color: '#F97316', fontFamily: 'var(--font-mono)' }}>{method} {targetUrl}</strong>
+          </div>
         </div>
 
         {/* Presets Grid */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: '#A1A1AA', marginBottom: 8, display: 'block' }}>
-            Request Volume Presets:
+            Total Request Volume:
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
             {presets.map((p) => (
               <button
                 key={p}
@@ -174,7 +252,7 @@ export const BurstModal: React.FC<BurstModalProps> = ({
         </div>
 
         {/* Concurrency Slider */}
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
             <span style={{ color: '#A1A1AA', fontWeight: 600 }}>Virtual Concurrency Workers:</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#A855F7' }}>{concurrency} workers</span>
@@ -190,61 +268,78 @@ export const BurstModal: React.FC<BurstModalProps> = ({
           />
         </div>
 
-        {/* Execution Actions */}
+        {/* Action Button */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
           {isRunning ? (
-            <button className="btn btn-secondary" onClick={handleStop} style={{ color: '#EF4444' }}>
-              <Square size={13} /> Stop Burst
+            <button className="btn btn-secondary" onClick={handleStop} style={{ color: '#EF4444', flex: 1 }}>
+              <Square size={13} /> Stop Stress Run
             </button>
           ) : (
-            <button className="btn btn-burst" onClick={handleRunBurst} style={{ flex: 1 }}>
-              <Flame size={14} /> Send {burstCount} Burst Requests
+            <button className="btn btn-burst" onClick={handleRunBurst} style={{ flex: 1, padding: '10px 16px' }}>
+              <Flame size={15} /> Run {burstCount} Requests ({concurrency} Concurrent)
             </button>
           )}
         </div>
 
-        {/* Real-time Progress Bar */}
+        {/* Real-time Progress Bar & Status Counters */}
         {(isRunning || completedSummary) && (
-          <div style={{ marginTop: 14 }}>
-            <div style={{ height: 8, background: '#202024', border: '1px solid #2A2A30', borderRadius: 4, overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '100%',
-                  width: `${progress}%`,
-                  background: 'linear-gradient(90deg, #A855F7, #F97316)',
-                  transition: 'width 0.15s',
-                }}
-              ></div>
+          <div style={{ background: '#121216', border: '1px solid #2A2A30', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'var(--font-mono)', marginBottom: 6 }}>
+              <span>Progress: {progress}%</span>
+              <span>{sent} / {burstCount} requests</span>
+            </div>
+
+            {/* Split Progress Fill */}
+            <div style={{ height: 10, background: '#202024', border: '1px solid #2A2A30', borderRadius: 5, overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${allowPercent}%`, background: '#22C55E', transition: 'width 0.1s' }} />
+              <div style={{ width: `${denyPercent}%`, background: '#EF4444', transition: 'width 0.1s' }} />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
-              <span style={{ color: '#22C55E' }}>● {allowed} ALLOW (200)</span>
-              <span style={{ color: '#EF4444' }}>● {denied} THROTTLED (429)</span>
-              <span style={{ color: '#71717A' }}>{sent} / {burstCount}</span>
+              <span style={{ color: '#22C55E', fontWeight: 700 }}>● {allowed} ALLOW (200) [{allowPercent}%]</span>
+              <span style={{ color: '#EF4444', fontWeight: 700 }}>● {denied} THROTTLED (429) [{denyPercent}%]</span>
+              {errors > 0 && <span style={{ color: '#F59E0B' }}>● {errors} ERR</span>}
             </div>
           </div>
         )}
 
-        {/* Completed Summary Report */}
+        {/* Completed Statistical Summary Report */}
         {completedSummary && (
           <div
             style={{
-              background: '#121216',
-              border: '1px solid #2A2A30',
+              background: '#15151B',
+              border: '1px solid #2E2E38',
               borderRadius: 8,
               padding: 14,
-              marginTop: 16,
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#A855F7', marginBottom: 8 }}>
-              BURST RESULT ({completedSummary.total} requests in {completedSummary.durationSec}s)
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#F97316', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Activity size={14} />
+                <span>BENCHMARK RESULTS ({completedSummary.total} reqs in {completedSummary.durationSec}s)</span>
+              </div>
+              <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: '#22C55E', fontWeight: 800 }}>
+                ⚡ {completedSummary.rps} RPS
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: 12 }}>
-              <div>200 OK: <strong style={{ color: '#22C55E', fontFamily: 'var(--font-mono)' }}>{completedSummary.allowed}</strong></div>
-              <div>429 THROTTLED: <strong style={{ color: '#EF4444', fontFamily: 'var(--font-mono)' }}>{completedSummary.denied}</strong></div>
-              <div>Average Latency: <strong style={{ color: '#F97316', fontFamily: 'var(--font-mono)' }}>{completedSummary.avgLatency} ms</strong></div>
-              <div>P95 Latency: <strong style={{ color: '#F59E0B', fontFamily: 'var(--font-mono)' }}>{completedSummary.p95Latency} ms</strong></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, fontSize: 12 }}>
+              <div style={{ background: '#1B1B22', padding: 8, borderRadius: 4 }}>
+                <span style={{ color: '#71717A', display: 'block', fontSize: 11 }}>200 Allowed:</span>
+                <strong style={{ color: '#22C55E', fontFamily: 'var(--font-mono)', fontSize: 14 }}>{completedSummary.allowed}</strong>
+              </div>
+              <div style={{ background: '#1B1B22', padding: 8, borderRadius: 4 }}>
+                <span style={{ color: '#71717A', display: 'block', fontSize: 11 }}>429 Throttled:</span>
+                <strong style={{ color: '#EF4444', fontFamily: 'var(--font-mono)', fontSize: 14 }}>{completedSummary.denied}</strong>
+              </div>
+              <div style={{ background: '#1B1B22', padding: 8, borderRadius: 4 }}>
+                <span style={{ color: '#71717A', display: 'block', fontSize: 11 }}>Median (p50):</span>
+                <strong style={{ color: '#F4F4F5', fontFamily: 'var(--font-mono)' }}>{completedSummary.p50Latency} ms</strong>
+              </div>
+              <div style={{ background: '#1B1B22', padding: 8, borderRadius: 4 }}>
+                <span style={{ color: '#71717A', display: 'block', fontSize: 11 }}>P95 / P99 Latency:</span>
+                <strong style={{ color: '#F97316', fontFamily: 'var(--font-mono)' }}>{completedSummary.p95Latency} ms / {completedSummary.p99Latency} ms</strong>
+              </div>
             </div>
           </div>
         )}

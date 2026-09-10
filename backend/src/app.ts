@@ -8,6 +8,7 @@ import { healthRoutes } from './routes/health.js';
 import { adminRoutes } from './routes/admin.js';
 import { checkRoutes } from './routes/check.js';
 import { metricsRoutes } from './routes/metrics.js';
+import { proxyRoutes } from './routes/proxy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +62,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   app.register(adminRoutes);
   app.register(checkRoutes);
   app.register(metricsRoutes);
+  app.register(proxyRoutes);
 
   // Custom 404 Handler
   app.setNotFoundHandler((request, reply) => {

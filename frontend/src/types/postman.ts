@@ -1,4 +1,4 @@
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
 export type WorkspaceMode = 'request' | 'response';
 
@@ -18,10 +18,13 @@ export interface RequestTemplate {
   url: string;
   headers: KeyValueParam[];
   params: KeyValueParam[];
-  bodyType: 'json' | 'none';
+  bodyType: 'json' | 'raw' | 'none';
   bodyJson: string;
-  authType: 'none' | 'bearer';
+  authType: 'none' | 'bearer' | 'apikey';
   bearerToken?: string;
+  apiKeyName?: string;
+  apiKeyValue?: string;
+  clientKey?: string;
 }
 
 export interface RequestCollectionFolder {
@@ -81,8 +84,11 @@ export interface ResponseSnapshot {
   remaining: number;
   reset: number;
   retryAfter?: number;
-  algorithm?: 'token_bucket' | 'sliding_window';
+  algorithm?: 'token_bucket' | 'sliding_window' | string;
   decision?: 'ALLOW' | 'DENY';
+  isProxied?: boolean;
+  targetUrl?: string;
+  error?: string;
 }
 
 export interface HistoryItem {
@@ -96,4 +102,15 @@ export interface HistoryItem {
   decision: 'ALLOW' | 'DENY' | 'ERROR';
   request: RequestTemplate;
   response: ResponseSnapshot;
+}
+
+export interface DemoApiPreset {
+  id: string;
+  name: string;
+  category: string;
+  method: HttpMethod;
+  url: string;
+  description: string;
+  headers?: Record<string, string>;
+  body?: any;
 }

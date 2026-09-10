@@ -20,6 +20,8 @@ import {
 import { Health, TabType } from '../types';
 import { soundFX } from '../utils/helpers';
 
+import { LimiterLabLogo } from './LimiterLabLogo';
+
 interface NavbarProps {
   currentTab: TabType;
   onTabChange: (tab: TabType) => void;
@@ -68,20 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="app-header" style={{ background: '#121216', borderBottom: '1px solid #2A2A30', padding: '12px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #F97316, #A855F7)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 12px rgba(249, 115, 22, 0.35)',
-            }}
-          >
-            <Zap size={22} color="#0D0D0F" />
-          </div>
+          <LimiterLabLogo size={38} />
           <div>
             <h1 style={{ fontSize: 16, fontWeight: 800, color: '#F4F4F5' }}>Token Bucket Rate Limiter</h1>
             <div style={{ fontSize: 11, color: '#71717A' }}>
