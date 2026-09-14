@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Activity,
-  CheckCircle2,
-  XCircle,
   Zap,
-  Layers,
   Database,
   HardDrive,
   Server,
@@ -13,8 +10,6 @@ import {
   RotateCcw,
   Sliders,
   ArrowUpRight,
-  Clock,
-  ShieldCheck,
   Flame
 } from 'lucide-react';
 import { Metrics, Health, Client, LiveRequestActivity, DashboardEvent } from '../types';
@@ -146,12 +141,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [activityFilter, setActivityFilter] = useState<'ALL' | '200' | '429'>('ALL');
 
   // Compute total & rates
-  const totalEvaluated = metrics.totalRequests || (metrics.allowedRequests + metrics.deniedRequests) || 27564;
   const totalAllowed = metrics.allowedRequests || 26821;
   const totalDenied = metrics.deniedRequests || 743;
-  const allowPercentage = ((totalAllowed / (totalAllowed + totalDenied || 1)) * 100).toFixed(1);
   const denyPercentage = ((totalDenied / (totalAllowed + totalDenied || 1)) * 100).toFixed(1);
-  const avgLatency = (8.4 + Math.sin(Date.now() / 3000) * 0.4).toFixed(1);
   const activeKeysCount = clients.length || 42;
 
   // Real-time Smooth Canvas Chart Rendering
@@ -172,9 +164,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
     const history = chartHistory.length > 0
       ? chartHistory
-      : Array.from({ length: 45 }, (_, i) => ({
-          allowed: Math.floor(400 + Math.sin(i * 0.4) * 80 + Math.random() * 30),
-          denied: Math.floor(15 + Math.cos(i * 0.3) * 10 + (i % 7 === 0 ? 35 : 0)),
+      : Array.from({ length: 45 }, () => ({
+          allowed: 0,
+          denied: 0,
         }));
 
     const step = w / Math.max(1, history.length - 1);
@@ -408,141 +400,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* =========================================================================
-          TOP STRIP: 5 KPI METRICS
-          TOTAL REQUESTS │ ALLOWED │ RATE LIMITED │ AVG LATENCY │ ACTIVE KEYS
-          ========================================================================= */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 14,
-          marginBottom: 22,
-        }}
-      >
-        {/* Metric 1: Total Requests */}
-        <div
-          className="glass-panel"
-          style={{
-            padding: '16px 20px',
-            background: 'linear-gradient(180deg, #18181C 0%, #121216 100%)',
-            border: '1px solid #2A2A30',
-            borderRadius: 'var(--radius-md)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#A1A1AA', textTransform: 'uppercase' }}>
-              TOTAL REQUESTS
-            </span>
-            <Activity size={15} color="#A1A1AA" />
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#F4F4F5', fontFamily: 'var(--font-mono)' }}>
-            {totalEvaluated.toLocaleString()}
-          </div>
-          <div style={{ fontSize: 11, color: '#71717A', marginTop: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-            <ShieldCheck size={12} color="#F97316" />
-            <span>Evaluated across cluster</span>
-          </div>
-        </div>
 
-        {/* Metric 2: Allowed */}
-        <div
-          className="glass-panel"
-          style={{
-            padding: '16px 20px',
-            background: 'linear-gradient(180deg, rgba(34, 197, 94, 0.06) 0%, #121216 100%)',
-            border: '1px solid rgba(34, 197, 94, 0.25)',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#22C55E', textTransform: 'uppercase' }}>
-              ALLOWED
-            </span>
-            <CheckCircle2 size={15} color="#22C55E" />
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#22C55E', fontFamily: 'var(--font-mono)' }}>
-            {totalAllowed.toLocaleString()}
-          </div>
-          <div style={{ fontSize: 11, color: '#22C55E', marginTop: 4, fontWeight: 600 }}>
-            {allowPercentage}% fulfilled
-          </div>
-        </div>
-
-        {/* Metric 3: Rate Limited */}
-        <div
-          className="glass-panel"
-          style={{
-            padding: '16px 20px',
-            background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.06) 0%, #121216 100%)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#EF4444', textTransform: 'uppercase' }}>
-              RATE LIMITED
-            </span>
-            <XCircle size={15} color="#EF4444" />
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#EF4444', fontFamily: 'var(--font-mono)' }}>
-            {totalDenied.toLocaleString()}
-          </div>
-          <div style={{ fontSize: 11, color: '#EF4444', marginTop: 4, fontWeight: 600 }}>
-            {denyPercentage}% throttled (429)
-          </div>
-        </div>
-
-        {/* Metric 4: Avg Latency */}
-        <div
-          className="glass-panel"
-          style={{
-            padding: '16px 20px',
-            background: 'linear-gradient(180deg, #18181C 0%, #121216 100%)',
-            border: '1px solid #2A2A30',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#A1A1AA', textTransform: 'uppercase' }}>
-              AVG LATENCY
-            </span>
-            <Clock size={15} color="#38BDF8" />
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#38BDF8', fontFamily: 'var(--font-mono)' }}>
-            {avgLatency}ms
-          </div>
-          <div style={{ fontSize: 11, color: '#71717A', marginTop: 4 }}>
-            Sub-millisecond Redis Lua
-          </div>
-        </div>
-
-        {/* Metric 5: Active Keys */}
-        <div
-          className="glass-panel"
-          style={{
-            padding: '16px 20px',
-            background: 'linear-gradient(180deg, rgba(168, 85, 247, 0.06) 0%, #121216 100%)',
-            border: '1px solid rgba(168, 85, 247, 0.25)',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#A855F7', textTransform: 'uppercase' }}>
-              ACTIVE KEYS
-            </span>
-            <Layers size={15} color="#A855F7" />
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#A855F7', fontFamily: 'var(--font-mono)' }}>
-            {activeKeysCount}
-          </div>
-          <div style={{ fontSize: 11, color: '#71717A', marginTop: 4 }}>
-            Registered client policies
-          </div>
-        </div>
-      </div>
 
       {/* =========================================================================
           ROW 1: REQUEST TRAFFIC (Left ~65%) │ KEY INSIGHTS (Right ~35%)

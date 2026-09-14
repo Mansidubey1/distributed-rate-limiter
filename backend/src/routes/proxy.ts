@@ -11,7 +11,8 @@ export const proxyRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
   // 2. Postman-style Reverse Proxy Gateway Endpoint
   fastify.post<{
     Body: {
-      url: string;
+      url?: string;
+      targetUrl?: string;
       method?: string;
       headers?: Record<string, string>;
       body?: any;
@@ -20,19 +21,24 @@ export const proxyRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     };
   }>('/v1/proxy', async (request, reply) => {
     try {
-      const { url, method = 'GET', headers = {}, body, params, clientKey } = request.body || {};
+      const payload = request.body || {};
+      const rawUrl = payload.url || payload.targetUrl;
+      const { method = 'GET', headers = {}, body, params, clientKey } = payload;
 
-      if (!url || typeof url !== 'string' || url.trim() === '') {
+      if (!rawUrl || typeof rawUrl !== 'string' || rawUrl.trim() === '') {
         return reply.status(400).send({ error: 'url is required and must be a valid HTTP(S) URL' });
       }
 
+      const headerClientKey = (request.headers['x-client-key'] || request.headers['X-Client-Key']) as string;
       const effectiveClientKey =
-        clientKey && typeof clientKey === 'string' && clientKey.trim() !== ''
+        (clientKey && typeof clientKey === 'string' && clientKey.trim() !== '')
           ? clientKey.trim()
+          : (headerClientKey && typeof headerClientKey === 'string' && headerClientKey.trim() !== '')
+          ? headerClientKey.trim()
           : 'demo-client';
 
       const result = await proxyService.forwardRequest({
-        url: url.trim(),
+        url: rawUrl.trim(),
         method,
         headers,
         body,

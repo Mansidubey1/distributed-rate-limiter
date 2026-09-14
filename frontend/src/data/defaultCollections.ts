@@ -123,7 +123,7 @@ export const demoApiPresets: DemoApiPreset[] = [
 export const defaultCollections: RequestCollection[] = [
   {
     id: 'col-gateway-apis',
-    name: '🌐 Real-World Public APIs (Gateway Proxy)',
+    name: 'Real-World Public APIs (Gateway Proxy)',
     description: 'Forward requests to real external APIs protected by Token Bucket & Sliding Window rate limiting.',
     folders: [
       {

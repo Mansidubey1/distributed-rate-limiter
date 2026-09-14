@@ -1,67 +1,69 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   RequestTemplate,
   ResponseSnapshot,
   HistoryItem,
   ConsoleLogEntry,
-  EnvironmentProfile,
-  WorkspaceMode
+  EnvironmentProfile
 } from './types/postman';
 import {
   Metrics,
   Health,
   Client,
   LiveRequestActivity,
-  DashboardEvent,
-  RequestTrace,
-  HeaderSnapshot,
-  SystemEvent
+  DashboardEvent
 } from './types';
 import { defaultCollections, defaultEnvironments } from './data/defaultCollections';
-import { DashboardOverview } from './components/DashboardOverview';
-import { PostmanHeader } from './components/postman/PostmanHeader';
-import { PostmanSidebar, SidebarTab } from './components/postman/PostmanSidebar';
-import { RequestBuilder } from './components/postman/RequestBuilder';
-import { ResponseViewer } from './components/postman/ResponseViewer';
+import { Navbar } from './components/Navbar';
+import { UnifiedWorkbench, SidebarTab } from './components/UnifiedWorkbench';
 import { BurstModal } from './components/postman/BurstModal';
 import { VisualizeModal } from './components/postman/VisualizeModal';
 import { EnvironmentModal } from './components/postman/EnvironmentModal';
-import { PostmanConsole } from './components/postman/PostmanConsole';
-import { PolicyManager } from './components/PolicyManager';
-import { BenchmarkLab } from './components/BenchmarkLab';
-import { RequestTracing } from './components/RequestTracing';
-import { HeaderInspector } from './components/HeaderInspector';
-import { TrafficSimulator } from './components/TrafficSimulator';
-import { InstanceTelemetry } from './components/InstanceTelemetry';
-import { ChaosLab } from './components/ChaosLab';
-import { AlgorithmVisualizer } from './components/AlgorithmVisualizer';
-import { ApiIntegrationHub } from './components/ApiIntegrationHub';
-import { SystemEventStream } from './components/SystemEventStream';
-import { TelemetryOverview } from './components/TelemetryOverview';
 import { soundFX } from './utils/helpers';
-import { Flame, Radio, Search, Zap, Server, Sparkles, BookOpen, Activity, Code2, Sliders, X, Plus } from 'lucide-react';
 
 export default function App() {
-  // 1. Primary Pillar Navigation: 'dashboard' (Observability) is default!
-  const [mainTab, setMainTab] = useState<string>('dashboard');
-
-  // Secondary sub-tab selections for Analytics & Infrastructure
-  const [analyticsSubTab, setAnalyticsSubTab] = useState<'benchmark' | 'tracing' | 'headers' | 'traffic'>('benchmark');
-  const [infraSubTab, setInfraSubTab] = useState<'telemetry' | 'chaos' | 'algorithms' | 'telemetry_overview' | 'code' | 'events'>('telemetry');
-
   // Environments & Collections
   const [environments, setEnvironments] = useState<EnvironmentProfile[]>(defaultEnvironments);
   const [activeEnvironmentId, setActiveEnvironmentId] = useState<string>('env-local');
   const [collections] = useState(defaultCollections);
 
-  // Postman Workspace Mode: 'request' | 'response'
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('request');
-
-  // Active Request
+  // Active Request for API Client Workbench
   const [activeRequest, setActiveRequest] = useState<RequestTemplate>(
     defaultCollections[0].folders[0].requests[0]
   );
-  const [latestResponse, setLatestResponse] = useState<ResponseSnapshot | null>(null);
+  const [latestResponse, setLatestResponse] = useState<ResponseSnapshot | null>({
+    timestamp: Date.now(),
+    status: 200,
+    statusText: 'OK',
+    latencyMs: 142,
+    sizeBytes: 312,
+    body: {
+      id: 1,
+      clientKey: 'mobile-app-client',
+      allowed: true,
+      remaining: 16,
+      limit: 20,
+      reset: Math.floor(Date.now() / 1000) + 1,
+      algorithm: 'token_bucket',
+      message: 'Rate limit check passed successfully'
+    },
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-ratelimit-limit': '20',
+      'x-ratelimit-remaining': '16',
+      'x-ratelimit-reset': `${Math.floor(Date.now() / 1000) + 1}`,
+      'x-instance-id': 'limiter-01'
+    },
+    instanceId: 'limiter-01',
+    requestId: 'req-init-200',
+    limit: 20,
+    remaining: 16,
+    reset: Math.floor(Date.now() / 1000) + 1,
+    algorithm: 'token_bucket',
+    decision: 'ALLOW',
+    isProxied: false,
+    targetUrl: 'http://localhost:3000/v1/check',
+  });
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // History & Console Logs
@@ -71,7 +73,7 @@ export default function App() {
       id: 'init-1',
       timestamp: Date.now(),
       type: 'info',
-      message: 'LimiterLab API Gateway initialized. Ready to route requests through distributed rate limiting.',
+      message: 'LimiterLab Gateway initialized. Ready to route requests through distributed rate limiting.',
     },
   ]);
 
@@ -82,14 +84,6 @@ export default function App() {
   const [isBurstModalOpen, setIsBurstModalOpen] = useState<boolean>(false);
   const [isVisualizeModalOpen, setIsVisualizeModalOpen] = useState<boolean>(false);
   const [isEnvModalOpen, setIsEnvModalOpen] = useState<boolean>(false);
-  const [isCreatePolicyModalOpen, setIsCreatePolicyModalOpen] = useState<boolean>(false);
-
-  // New Policy Form State
-  const [newClientKey, setNewClientKey] = useState<string>('');
-  const [newAlgorithm, setNewAlgorithm] = useState<'token_bucket' | 'sliding_window'>('token_bucket');
-  const [newRps, setNewRps] = useState<number>(10);
-  const [newBurstSize, setNewBurstSize] = useState<number>(20);
-  const [newWindowSize, setNewWindowSize] = useState<number>(10);
 
   // Live Cluster Data
   const [metrics, setMetrics] = useState<Metrics>({
@@ -109,43 +103,115 @@ export default function App() {
     },
   });
   const [clients, setClients] = useState<Client[]>([
-    { clientKey: 'client01', algorithm: 'token_bucket', requestsPerSecond: 5, burstSize: 10, windowSize: 10, allowedRequests: 1420, deniedRequests: 12 },
-    { clientKey: 'client42', algorithm: 'token_bucket', requestsPerSecond: 10, burstSize: 20, windowSize: 10, allowedRequests: 890, deniedRequests: 145 },
-    { clientKey: 'demo', algorithm: 'token_bucket', requestsPerSecond: 20, burstSize: 40, windowSize: 10, allowedRequests: 3200, deniedRequests: 40 },
-    { clientKey: 'mobile-app', algorithm: 'sliding_window', requestsPerSecond: 15, burstSize: 30, windowSize: 10, allowedRequests: 2150, deniedRequests: 80 },
-    { clientKey: 'payment-svc', algorithm: 'token_bucket', requestsPerSecond: 50, burstSize: 100, windowSize: 10, allowedRequests: 12400, deniedRequests: 120 },
+    { clientKey: 'mobile-app-client', algorithm: 'token_bucket', requestsPerSecond: 5, burstSize: 20, windowSize: 10, allowedRequests: 1420, deniedRequests: 12 },
+    { clientKey: 'client01', algorithm: 'token_bucket', requestsPerSecond: 10, burstSize: 20, windowSize: 10, allowedRequests: 890, deniedRequests: 145 },
+    { clientKey: 'client42', algorithm: 'token_bucket', requestsPerSecond: 5, burstSize: 10, windowSize: 10, allowedRequests: 420, deniedRequests: 95 },
+    { clientKey: 'demo-client', algorithm: 'token_bucket', requestsPerSecond: 20, burstSize: 40, windowSize: 10, allowedRequests: 3200, deniedRequests: 40 },
+    { clientKey: 'payment-service', algorithm: 'sliding_window', requestsPerSecond: 50, burstSize: 100, windowSize: 10, allowedRequests: 12400, deniedRequests: 120 },
   ]);
-  const [rps, setRps] = useState<number>(482);
+  const [rps, setRps] = useState<number>(0);
   const [chartHistory, setChartHistory] = useState<{ allowed: number; denied: number }[]>(
-    Array.from({ length: 45 }, (_, i) => ({
-      allowed: Math.floor(420 + Math.sin(i * 0.4) * 60 + (i % 3 === 0 ? 30 : -20)),
-      denied: Math.floor(18 + Math.cos(i * 0.3) * 8 + (i % 7 === 0 ? 25 : 0)),
+    Array.from({ length: 45 }, () => ({
+      allowed: 0,
+      denied: 0,
     }))
   );
 
-  // Live Dashboard Request Stream
+  // Live Requests Activity Stream
   const [liveRequests, setLiveRequests] = useState<LiveRequestActivity[]>([
-    { id: 'r1', timestamp: Date.now() - 400, clientKey: 'client01', endpoint: '/v1/check', method: 'POST', status: 200, statusText: 'OK', latencyMs: 8, instanceId: 'limiter-01', decision: 'ALLOW' },
-    { id: 'r2', timestamp: Date.now() - 1200, clientKey: 'client42', endpoint: '/v1/check', method: 'POST', status: 429, statusText: 'Too Many Requests', latencyMs: 2, instanceId: 'limiter-01', decision: 'DENY' },
-    { id: 'r3', timestamp: Date.now() - 2500, clientKey: 'demo', endpoint: '/v1/proxy', method: 'POST', status: 200, statusText: 'OK', latencyMs: 31, instanceId: 'limiter-01', decision: 'ALLOW' },
-    { id: 'r4', timestamp: Date.now() - 3800, clientKey: 'mobile-app', endpoint: '/v1/check', method: 'POST', status: 200, statusText: 'OK', latencyMs: 6, instanceId: 'limiter-01', decision: 'ALLOW' },
-    { id: 'r5', timestamp: Date.now() - 5200, clientKey: 'client17', endpoint: '/v1/check', method: 'POST', status: 429, statusText: 'Too Many Requests', latencyMs: 1, instanceId: 'limiter-01', decision: 'DENY' },
+    {
+      id: 'req-01',
+      timestamp: Date.now() - 1000,
+      clientKey: 'mobile-app-client',
+      endpoint: '/api/v1/checkout',
+      method: 'GET',
+      status: 200,
+      statusText: 'OK',
+      latencyMs: 3,
+      instanceId: 'limiter-01',
+      decision: 'ALLOW',
+      remaining: 16,
+      limit: 20,
+    },
+    {
+      id: 'req-02',
+      timestamp: Date.now() - 3000,
+      clientKey: 'client01',
+      endpoint: '/api/v1/charge',
+      method: 'POST',
+      status: 429,
+      statusText: 'TOO MANY REQUESTS',
+      latencyMs: 1,
+      instanceId: 'limiter-01',
+      decision: 'DENY',
+      remaining: 0,
+      limit: 20,
+    },
+    {
+      id: 'req-03',
+      timestamp: Date.now() - 5000,
+      clientKey: 'client42',
+      endpoint: '/api/v1/user',
+      method: 'GET',
+      status: 200,
+      statusText: 'OK',
+      latencyMs: 2,
+      instanceId: 'limiter-01',
+      decision: 'ALLOW',
+      remaining: 8,
+      limit: 10,
+    },
+    {
+      id: 'req-04',
+      timestamp: Date.now() - 8000,
+      clientKey: 'demo-client',
+      endpoint: '/api/v1/data',
+      method: 'POST',
+      status: 200,
+      statusText: 'OK',
+      latencyMs: 4,
+      instanceId: 'limiter-01',
+      decision: 'ALLOW',
+      remaining: 38,
+      limit: 40,
+    },
   ]);
 
-  // Live Dashboard Rate Limit Events
-  const [dashboardEvents, setDashboardEvents] = useState<DashboardEvent[]>([
-    { id: 'e1', timestamp: Date.now() - 2000, severity: 'ERROR', clientKey: 'client42', message: 'client42 exceeded limit (0 tokens remaining)' },
-    { id: 'e2', timestamp: Date.now() - 14000, severity: 'WARN', clientKey: 'client17', message: 'client17 burst limit exceeded (20/20 capacity)' },
-    { id: 'e3', timestamp: Date.now() - 28000, severity: 'SUCCESS', clientKey: 'client05', message: 'client05 bucket refilled (+5 tokens via continuous Lua engine)' },
-    { id: 'e4', timestamp: Date.now() - 60000, severity: 'INFO', clientKey: 'mobile-app', message: 'Redis Lua token state synchronized across cluster' },
-    { id: 'e5', timestamp: Date.now() - 180000, severity: 'INFO', clientKey: 'payment-svc', message: 'Policy active: 50 RPS / 100 burst' },
+  // Rate Limit Events Log
+  const [events, setEvents] = useState<DashboardEvent[]>([
+    {
+      id: 'ev-1',
+      timestamp: Date.now() - 2000,
+      severity: 'ERROR',
+      clientKey: 'client01',
+      message: 'Token bucket capacity exhausted (0/20 tokens)',
+      category: 'THROTTLE',
+    },
+    {
+      id: 'ev-2',
+      timestamp: Date.now() - 14000,
+      severity: 'WARN',
+      clientKey: 'demo-client',
+      message: 'Burst threshold reached: 40 RPS capacity',
+      category: 'BURST',
+    },
+    {
+      id: 'ev-3',
+      timestamp: Date.now() - 28000,
+      severity: 'SUCCESS',
+      clientKey: 'mobile-app-client',
+      message: 'Token bucket refilled (+5 tokens/sec)',
+      category: 'REFILL',
+    },
+    {
+      id: 'ev-4',
+      timestamp: Date.now() - 60000,
+      severity: 'INFO',
+      clientKey: 'payment-service',
+      message: 'Sliding window quota synchronized across cluster',
+      category: 'CLUSTER',
+    },
   ]);
-
-  // Analytics & Traces state
-  const [traces, setTraces] = useState<RequestTrace[]>([]);
-  const [latestSnapshot, setLatestSnapshot] = useState<HeaderSnapshot | null>(null);
-  const [snapshots, setSnapshots] = useState<HeaderSnapshot[]>([]);
-  const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
 
   const prevTotalRef = useRef<number>(0);
   const prevAllowedRef = useRef<number>(0);
@@ -173,7 +239,7 @@ export default function App() {
         if (diffSec >= 1 && prevTotalRef.current > 0) {
           const reqDiff = Math.max(0, m.totalRequests - prevTotalRef.current);
           const currentRps = Math.round(reqDiff / diffSec);
-          if (currentRps > 0) setRps(currentRps);
+          setRps(currentRps);
 
           const allowedDiff = Math.max(0, m.allowedRequests - prevAllowedRef.current);
           const deniedDiff = Math.max(0, m.deniedRequests - prevDeniedRef.current);
@@ -225,49 +291,84 @@ export default function App() {
     return result;
   };
 
-  // Extract clientKey from request, body JSON, or URL
-  const extractClientKey = (req: RequestTemplate): string => {
-    if (req.clientKey && req.clientKey.trim()) {
-      return req.clientKey.trim();
-    }
+  // Direct Token Consumption Helper
+  const handleConsumeTokenDirect = async (clientKey: string, count: number = 1) => {
     try {
-      const parsed = JSON.parse(interpolateVars(req.bodyJson));
-      if (parsed.clientKey) return parsed.clientKey;
-    } catch (_) {}
-    if (req.url.includes('/clients/')) {
-      const parts = req.url.split('/clients/');
-      return parts[1]?.split('/')[0] || 'client01';
-    }
-    return clients[0]?.clientKey || 'client01';
-  };
+      const targetClient = clients.find((c) => c.clientKey === clientKey) || clients[0];
+      const res = await fetch('/v1/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Key': targetClient?.clientKey || clientKey,
+        },
+        body: JSON.stringify({
+          cost: count,
+          algorithm: targetClient?.algorithm || 'token_bucket',
+          requestsPerSecond: targetClient?.requestsPerSecond || 5,
+          burstSize: targetClient?.burstSize || 20,
+        }),
+      });
 
-  const targetClientKey = extractClientKey(activeRequest);
-  const activeClient = clients.find((c) => c.clientKey === targetClientKey) || clients[0] || null;
+      const data = await res.json();
+      const status = res.status;
+      const isAllow = status === 200 || status === 201;
 
-  // Record a live activity request into state
-  const recordLiveActivity = (activity: LiveRequestActivity) => {
-    setLiveRequests((prev) => [activity, ...prev].slice(0, 50));
-    if (activity.status === 429) {
-      const newEv: DashboardEvent = {
-        id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      if (isAllow) {
+        soundFX.playAllow();
+      } else {
+        soundFX.playDeny();
+      }
+
+      const newLog: LiveRequestActivity = {
+        id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
         timestamp: Date.now(),
-        severity: 'ERROR',
-        clientKey: activity.clientKey,
-        message: `${activity.clientKey} exceeded rate limit (429 Too Many Requests)`,
+        clientKey: targetClient?.clientKey || clientKey,
+        endpoint: '/v1/check',
+        method: 'POST',
+        status,
+        statusText: isAllow ? 'OK' : 'TOO MANY REQUESTS',
+        latencyMs: Math.floor(Math.random() * 6) + 1,
+        instanceId: data.instanceId || 'limiter-01',
+        decision: isAllow ? 'ALLOW' : 'DENY',
+        remaining: data.remaining,
+        limit: data.limit,
       };
-      setDashboardEvents((prev) => [newEv, ...prev].slice(0, 100));
-    }
+      setLiveRequests((prev) => [newLog, ...prev.slice(0, 29)]);
+
+      if (!isAllow) {
+        setEvents((prev) => [
+          {
+            id: `ev-${Date.now()}`,
+            timestamp: Date.now(),
+            severity: 'ERROR',
+            clientKey: targetClient?.clientKey || clientKey,
+            message: `Bucket exhausted: 429 Too Many Requests (0 remaining)`,
+            category: 'THROTTLE',
+          },
+          ...prev.slice(0, 40),
+        ]);
+      }
+
+      fetchData();
+      return data;
+    } catch (_) {}
   };
 
-  // Execute Request (SEND button in Postman / API Client)
+  // Execute Request from API Client Workbench
   const handleSendRequest = async () => {
     setIsLoading(true);
-    const resolvedUrl = interpolateVars(activeRequest.url);
-    const resolvedBodyStr =
-      activeRequest.bodyType === 'json' && activeRequest.method !== 'GET' && activeRequest.bodyJson.trim()
-        ? interpolateVars(activeRequest.bodyJson)
-        : undefined;
+    const startTime = performance.now();
 
+    // 1. Resolve URL with query params
+    let resolvedUrl = interpolateVars(activeRequest.url);
+    const enabledParams = activeRequest.params.filter((p) => p.enabled && p.key);
+    if (enabledParams.length > 0) {
+      const searchParams = new URLSearchParams();
+      enabledParams.forEach((p) => searchParams.append(interpolateVars(p.key), interpolateVars(p.value)));
+      resolvedUrl += (resolvedUrl.includes('?') ? '&' : '?') + searchParams.toString();
+    }
+
+    // 2. Resolve Headers
     const resolvedHeaders: Record<string, string> = {};
     activeRequest.headers
       .filter((h) => h.enabled && h.key)
@@ -275,325 +376,242 @@ export default function App() {
         resolvedHeaders[h.key] = interpolateVars(h.value);
       });
 
-    if (activeRequest.authType === 'bearer' && activeRequest.bearerToken) {
-      resolvedHeaders['Authorization'] = `Bearer ${interpolateVars(activeRequest.bearerToken)}`;
-    } else if (activeRequest.authType === 'apikey' && activeRequest.apiKeyName && activeRequest.apiKeyValue) {
-      resolvedHeaders[activeRequest.apiKeyName] = interpolateVars(activeRequest.apiKeyValue);
+    // 3. Resolve Client Key
+    const finalClientKey = activeRequest.clientKey || 'mobile-app-client';
+    if (!resolvedHeaders['X-Client-Key'] && !resolvedHeaders['x-client-key']) {
+      resolvedHeaders['X-Client-Key'] = finalClientKey;
     }
 
-    const startMs = performance.now();
-    const isExternalUrl =
-      (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) &&
-      !resolvedUrl.includes('localhost:3000/v1/check') &&
-      !resolvedUrl.includes('localhost:3000/health') &&
-      !resolvedUrl.includes('localhost:3000/metrics') &&
-      !resolvedUrl.includes('localhost:3000/v1/admin');
-
     try {
-      let snapshot: ResponseSnapshot;
+      const isInternalProxy = resolvedUrl.startsWith('http://localhost:3000/v1/proxy') || resolvedUrl.startsWith('/v1/proxy');
+      const isInternalCheck = resolvedUrl.startsWith('http://localhost:3000/v1/check') || resolvedUrl.startsWith('/v1/check');
 
-      if (isExternalUrl) {
-        let parsedBody: any = undefined;
-        if (resolvedBodyStr) {
+      let res: Response;
+      if (isInternalCheck || resolvedUrl.includes('/v1/check')) {
+        res = await fetch('/v1/check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...resolvedHeaders,
+          },
+          body: JSON.stringify({
+            clientKey: finalClientKey,
+            cost: 1,
+            algorithm: 'token_bucket',
+          }),
+        });
+      } else if (isInternalProxy || resolvedUrl.startsWith('http://localhost') || resolvedUrl.startsWith('/api') || resolvedUrl.startsWith('/health') || resolvedUrl.startsWith('/metrics')) {
+        const fetchUrl = resolvedUrl.startsWith('http://localhost:3000') ? resolvedUrl.replace('http://localhost:3000', '') : resolvedUrl;
+        const fetchOptions: RequestInit = {
+          method: activeRequest.method,
+          headers: resolvedHeaders,
+        };
+        if (['POST', 'PUT', 'PATCH'].includes(activeRequest.method) && activeRequest.bodyJson) {
+          fetchOptions.body = activeRequest.bodyJson;
+        }
+        res = await fetch(fetchUrl, fetchOptions);
+      } else {
+        // External Proxy Request
+        let parsedPayloadBody: any = undefined;
+        if (activeRequest.bodyJson && activeRequest.bodyJson.trim()) {
           try {
-            parsedBody = JSON.parse(resolvedBodyStr);
+            parsedPayloadBody = JSON.parse(activeRequest.bodyJson);
           } catch (_) {
-            parsedBody = resolvedBodyStr;
+            parsedPayloadBody = activeRequest.bodyJson;
           }
         }
 
-        const paramMap: Record<string, string> = {};
-        activeRequest.params
-          .filter((p) => p.enabled && p.key)
-          .forEach((p) => {
-            paramMap[p.key] = interpolateVars(p.value);
-          });
-
-        const proxyPayload = {
-          url: resolvedUrl,
-          method: activeRequest.method,
-          headers: resolvedHeaders,
-          body: parsedBody,
-          params: paramMap,
-          clientKey: targetClientKey,
-        };
-
-        const res = await fetch('/v1/proxy', {
+        res = await fetch('/v1/proxy', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(proxyPayload),
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Client-Key': finalClientKey,
+            ...resolvedHeaders,
+          },
+          body: JSON.stringify({
+            url: resolvedUrl,
+            targetUrl: resolvedUrl,
+            method: activeRequest.method,
+            headers: resolvedHeaders,
+            clientKey: finalClientKey,
+            body: parsedPayloadBody,
+          }),
         });
-
-        const latencyMs = Number((performance.now() - startMs).toFixed(2));
-        const data = await res.json().catch(() => ({}));
-
-        const isAllow = data.decision === 'ALLOW' || res.status === 200 || res.status === 201;
-        if (isAllow) soundFX.playAllow();
-        else soundFX.playDeny();
-
-        snapshot = {
-          timestamp: Date.now(),
-          status: data.statusCode || res.status,
-          statusText: data.statusText || res.statusText || (isAllow ? 'OK' : 'Too Many Requests'),
-          latencyMs: data.latencyMs || latencyMs,
-          sizeBytes: data.sizeBytes || JSON.stringify(data.body || {}).length,
-          body: data.body !== undefined ? data.body : data,
-          headers: data.headers || {},
-          instanceId: data.instanceId || res.headers.get('x-instance-id') || 'limiter-01',
-          requestId: data.requestId || res.headers.get('x-request-id') || `req-${Date.now().toString(36)}`,
-          limit: data.rateLimit?.limit || 20,
-          remaining: data.rateLimit?.remaining ?? 0,
-          reset: data.rateLimit?.reset || Math.floor(Date.now() / 1000) + 1,
-          retryAfter: data.rateLimit?.retryAfter,
-          algorithm: data.rateLimit?.algorithm || activeClient?.algorithm || 'token_bucket',
-          decision: (data.decision || (isAllow ? 'ALLOW' : 'DENY')) as 'ALLOW' | 'DENY',
-          isProxied: true,
-          targetUrl: data.targetUrl || resolvedUrl,
-          error: data.error,
-        };
-      } else {
-        const res = await fetch(resolvedUrl, {
-          method: activeRequest.method,
-          headers: resolvedHeaders,
-          body: resolvedBodyStr,
-        });
-
-        const latencyMs = Number((performance.now() - startMs).toFixed(2));
-        const resHeaders: Record<string, string> = {};
-        res.headers.forEach((v, k) => {
-          resHeaders[k] = v;
-        });
-
-        const bodyData = await res.json().catch(() => ({}));
-        const sizeBytes = JSON.stringify(bodyData).length + 120;
-        const isAllow = res.status === 200 || res.status === 201;
-
-        if (isAllow) soundFX.playAllow();
-        else soundFX.playDeny();
-
-        const limit = Number(res.headers.get('x-ratelimit-limit') || bodyData.limit || 20);
-        const remaining = Number(res.headers.get('x-ratelimit-remaining') ?? bodyData.remaining ?? 0);
-        const reset = Number(
-          res.headers.get('x-ratelimit-reset') || bodyData.reset || Math.floor(Date.now() / 1000) + 1
-        );
-        const retryAfter = res.headers.get('retry-after')
-          ? Number(res.headers.get('retry-after'))
-          : bodyData.retryAfter;
-
-        snapshot = {
-          timestamp: Date.now(),
-          status: res.status,
-          statusText: res.statusText || (isAllow ? 'OK' : 'Too Many Requests'),
-          latencyMs,
-          sizeBytes,
-          body: bodyData,
-          headers: resHeaders,
-          instanceId: res.headers.get('x-instance-id') || bodyData.instanceId || 'limiter-01',
-          requestId: res.headers.get('x-request-id') || bodyData.requestId || `req-${Date.now().toString(36)}`,
-          limit,
-          remaining,
-          reset,
-          retryAfter,
-          algorithm: bodyData.algorithm || activeClient?.algorithm || 'token_bucket',
-          decision: isAllow ? 'ALLOW' : 'DENY',
-          isProxied: false,
-          targetUrl: resolvedUrl,
-        };
       }
 
-      setLatestResponse(snapshot);
-      setWorkspaceMode('response');
+      const endTime = performance.now();
+      const latencyMs = Math.round(endTime - startTime);
 
-      // Record History
-      const historyItem: HistoryItem = {
+      let bodyData: any = {};
+      const responseContentType = res.headers.get('content-type') || '';
+      if (responseContentType.includes('application/json')) {
+        bodyData = await res.json();
+      } else {
+        bodyData = await res.text();
+      }
+
+      const rawHeaders: Record<string, string> = {};
+      res.headers.forEach((val, key) => {
+        rawHeaders[key] = val;
+      });
+
+      // If response came from our /v1/proxy gateway, extract the target API's body & headers
+      const isProxyEnvelope = bodyData && typeof bodyData === 'object' && ('targetUrl' in bodyData || 'rateLimit' in bodyData);
+      const finalBody = isProxyEnvelope && bodyData.body !== undefined ? bodyData.body : bodyData;
+      const finalHeaders = isProxyEnvelope && bodyData.headers && Object.keys(bodyData.headers).length > 0 ? bodyData.headers : rawHeaders;
+      const finalStatus = isProxyEnvelope && typeof bodyData.statusCode === 'number' ? bodyData.statusCode : res.status;
+      const finalStatusText = isProxyEnvelope && bodyData.statusText ? bodyData.statusText : res.statusText || (finalStatus < 400 ? 'OK' : 'Error');
+      const isAllowed = finalStatus < 400 || finalStatus === 404;
+
+      if (isAllowed) {
+        soundFX.playAllow();
+      } else {
+        soundFX.playDeny();
+      }
+
+      const limitVal = isProxyEnvelope && bodyData.rateLimit?.limit !== undefined
+        ? bodyData.rateLimit.limit
+        : parseInt(rawHeaders['x-ratelimit-limit'] || '20', 10);
+      const remainingVal = isProxyEnvelope && bodyData.rateLimit?.remaining !== undefined
+        ? bodyData.rateLimit.remaining
+        : parseInt(rawHeaders['x-ratelimit-remaining'] || (isAllowed ? '16' : '0'), 10);
+      const resetVal = isProxyEnvelope && bodyData.rateLimit?.reset !== undefined
+        ? bodyData.rateLimit.reset
+        : parseInt(rawHeaders['x-ratelimit-reset'] || `${Math.floor(Date.now() / 1000) + 1}`, 10);
+      const instanceVal = (isProxyEnvelope && bodyData.instanceId) || rawHeaders['x-instance-id'] || health?.instanceId || 'limiter-01';
+      const actualLatency = isProxyEnvelope && typeof bodyData.latencyMs === 'number' ? Math.round(bodyData.latencyMs) : latencyMs;
+      const actualSizeBytes = isProxyEnvelope && typeof bodyData.sizeBytes === 'number'
+        ? bodyData.sizeBytes
+        : (typeof finalBody === 'string' ? finalBody.length : JSON.stringify(finalBody).length);
+
+      const snapshot: ResponseSnapshot = {
+        timestamp: Date.now(),
+        status: finalStatus,
+        statusText: finalStatusText,
+        latencyMs: actualLatency,
+        sizeBytes: actualSizeBytes,
+        body: finalBody,
+        headers: finalHeaders,
+        instanceId: instanceVal,
+        requestId: (isProxyEnvelope && bodyData.requestId) || `req-${Date.now()}`,
+        limit: limitVal,
+        remaining: remainingVal,
+        reset: resetVal,
+        algorithm: (isProxyEnvelope && bodyData.rateLimit?.algorithm) || 'token_bucket',
+        decision: isAllowed ? 'ALLOW' : 'DENY',
+        isProxied: true,
+        targetUrl: resolvedUrl,
+      };
+
+      setLatestResponse(snapshot);
+
+      // Add to History
+      const histItem: HistoryItem = {
         id: `hist-${Date.now()}`,
         timestamp: Date.now(),
         method: activeRequest.method,
-        url: snapshot.targetUrl || activeRequest.url,
-        clientKey: targetClientKey,
-        status: snapshot.status,
-        latencyMs: snapshot.latencyMs,
-        decision: snapshot.decision || 'ALLOW',
+        url: resolvedUrl,
+        clientKey: finalClientKey,
+        status: res.status,
+        latencyMs,
+        decision: isAllowed ? 'ALLOW' : 'DENY',
         request: { ...activeRequest },
         response: snapshot,
       };
-      setHistory((prev) => [historyItem, ...prev].slice(0, 50));
+      setHistory((prev) => [histItem, ...prev.slice(0, 49)]);
 
-      // Record to Live Request Stream
-      recordLiveActivity({
+      // Add to Live Requests Activity
+      const newLiveReq: LiveRequestActivity = {
         id: `act-${Date.now()}`,
         timestamp: Date.now(),
-        clientKey: targetClientKey,
-        endpoint: snapshot.targetUrl?.replace('http://localhost:3000', '') || '/v1/check',
+        clientKey: finalClientKey,
+        endpoint: resolvedUrl.replace(/^https?:\/\/[^/]+/, ''),
         method: activeRequest.method,
-        status: snapshot.status,
+        status: res.status,
         statusText: snapshot.statusText,
-        latencyMs: snapshot.latencyMs,
-        instanceId: snapshot.instanceId,
-        decision: (snapshot.decision || (snapshot.status === 200 || snapshot.status === 201 ? 'ALLOW' : 'DENY')) as 'ALLOW' | 'DENY',
-        remaining: snapshot.remaining,
-        limit: snapshot.limit,
-      });
-
-      // Append to Console Log
-      const logEntry: ConsoleLogEntry = {
-        id: `log-${Date.now()}`,
-        timestamp: Date.now(),
-        type: 'response',
-        method: activeRequest.method,
-        url: snapshot.targetUrl || resolvedUrl,
-        status: snapshot.status,
-        statusText: snapshot.statusText,
-        latencyMs: snapshot.latencyMs,
-        instanceId: snapshot.instanceId,
-        remaining: snapshot.remaining,
-        limit: snapshot.limit,
-        message: `${activeRequest.method} ${snapshot.targetUrl || resolvedUrl} → ${snapshot.status} ${snapshot.statusText} (${snapshot.latencyMs}ms) [Decision: ${snapshot.decision}]`,
+        latencyMs,
+        instanceId: instanceVal,
+        decision: isAllowed ? 'ALLOW' : 'DENY',
+        remaining: remainingVal,
+        limit: limitVal,
       };
-      setConsoleLogs((prev) => [logEntry, ...prev].slice(0, 100));
+      setLiveRequests((prev) => [newLiveReq, ...prev.slice(0, 29)]);
+
+      // Add to Rate Limit Events if throttled
+      if (!isAllowed) {
+        setEvents((prev) => [
+          {
+            id: `ev-${Date.now()}`,
+            timestamp: Date.now(),
+            severity: 'ERROR',
+            clientKey: finalClientKey,
+            message: `Rate limit throttled (HTTP 429) for ${finalClientKey}`,
+            category: 'THROTTLE',
+          },
+          ...prev.slice(0, 39),
+        ]);
+      }
+
+      // Add to Console Log
+      setConsoleLogs((prev) => [
+        {
+          id: `log-${Date.now()}`,
+          timestamp: Date.now(),
+          type: isAllowed ? 'response' : 'error',
+          message: `[${activeRequest.method}] ${resolvedUrl} -> ${res.status} ${snapshot.statusText} (${latencyMs}ms) [Tokens: ${remainingVal}/${limitVal}]`,
+        },
+        ...prev,
+      ]);
 
       fetchData();
     } catch (err: any) {
-      const latencyMs = Number((performance.now() - startMs).toFixed(2));
+      const endTime = performance.now();
+      const latencyMs = Math.round(endTime - startTime);
+      soundFX.playDeny();
+
       const errorSnapshot: ResponseSnapshot = {
         timestamp: Date.now(),
         status: 500,
         statusText: 'Gateway Error',
         latencyMs,
         sizeBytes: 0,
-        body: { error: err.message || 'Failed to dispatch request through gateway' },
+        body: { error: err.message || 'Request failed to execute' },
         headers: {},
         instanceId: 'limiter-01',
-        requestId: 'err',
+        requestId: `req-err-${Date.now()}`,
         limit: 20,
         remaining: 0,
         reset: Math.floor(Date.now() / 1000) + 1,
+        algorithm: 'token_bucket',
         decision: 'DENY',
+        isProxied: false,
         targetUrl: resolvedUrl,
-        error: err.message,
       };
+
       setLatestResponse(errorSnapshot);
-      setWorkspaceMode('response');
+      setConsoleLogs((prev) => [
+        {
+          id: `log-${Date.now()}`,
+          timestamp: Date.now(),
+          type: 'error',
+          message: `Request failed: ${err.message}`,
+        },
+        ...prev,
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Direct test request helper (for Dashboard buttons)
-  const handleSendTestRequest = async (clientKey: string, endpoint: string = '/v1/check') => {
-    const start = performance.now();
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-client-key': clientKey,
-        },
-        body: JSON.stringify({ clientKey }),
-      });
-      const latencyMs = Number((performance.now() - start).toFixed(1));
-      const data = await res.json().catch(() => ({}));
-      const isAllow = res.status === 200 || res.status === 201;
-
-      recordLiveActivity({
-        id: `test-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-        timestamp: Date.now(),
-        clientKey,
-        endpoint,
-        method: 'POST',
-        status: res.status,
-        statusText: isAllow ? 'OK' : 'Too Many Requests',
-        latencyMs,
-        instanceId: 'limiter-01',
-        decision: isAllow ? 'ALLOW' : 'DENY',
-        remaining: data.remaining,
-        limit: data.limit,
-      });
-
-      fetchData();
-      return data;
-    } catch (_) {
-      const latencyMs = Number((performance.now() - start).toFixed(1));
-      recordLiveActivity({
-        id: `test-${Date.now()}`,
-        timestamp: Date.now(),
-        clientKey,
-        endpoint,
-        method: 'POST',
-        status: 200,
-        statusText: 'OK (Local Math)',
-        latencyMs: latencyMs || 8,
-        instanceId: 'limiter-01',
-        decision: 'ALLOW',
-      });
-    }
-  };
-
-  // Handle Policy Creation
-  const handleCreatePolicy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newClientKey.trim()) return;
-
-    try {
-      const payload = {
-        clientKey: newClientKey.trim(),
-        algorithm: newAlgorithm,
-        requestsPerSecond: Number(newRps),
-        burstSize: newAlgorithm === 'token_bucket' ? Number(newBurstSize) : Number(newRps),
-        windowSize: newAlgorithm === 'sliding_window' ? Number(newWindowSize) : 1.0,
-      };
-
-      await fetch('/v1/admin/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      // Update local state
-      setClients((prev) => [
-        {
-          clientKey: newClientKey.trim(),
-          algorithm: newAlgorithm,
-          requestsPerSecond: Number(newRps),
-          burstSize: Number(newBurstSize),
-          windowSize: Number(newWindowSize),
-          allowedRequests: 0,
-          deniedRequests: 0,
-        },
-        ...prev.filter((c) => c.clientKey !== newClientKey.trim()),
-      ]);
-
-      const newEv: DashboardEvent = {
-        id: `ev-${Date.now()}`,
-        timestamp: Date.now(),
-        severity: 'SUCCESS',
-        clientKey: newClientKey.trim(),
-        message: `New rate policy created for ${newClientKey.trim()} (${newAlgorithm === 'token_bucket' ? 'Token Bucket' : 'Sliding Window'})`,
-      };
-      setDashboardEvents((prev) => [newEv, ...prev]);
-
-      setIsCreatePolicyModalOpen(false);
-      setNewClientKey('');
-      soundFX.playAllow();
-      fetchData();
-    } catch (_) {
-      setIsCreatePolicyModalOpen(false);
-    }
-  };
-
-  // Select Request from Collection
+  // Select Request from Collections
   const handleSelectRequest = (req: RequestTemplate) => {
     setActiveRequest({ ...req });
-    setWorkspaceMode('request');
-    setCurrentSidebarTab('collections');
   };
 
   // Select Request from History
   const handleSelectHistory = (item: HistoryItem) => {
     setActiveRequest({ ...item.request });
     setLatestResponse({ ...item.response });
-    setWorkspaceMode('response');
-    setCurrentSidebarTab('collections');
   };
 
   // Create New Empty Request
@@ -603,7 +621,7 @@ export default function App() {
       name: 'Custom Target API Request',
       method: 'GET',
       url: 'https://jsonplaceholder.typicode.com/posts/1',
-      clientKey: 'client01',
+      clientKey: 'mobile-app-client',
       headers: [{ id: 'h1', key: 'Accept', value: 'application/json', enabled: true }],
       params: [],
       bodyType: 'none',
@@ -611,9 +629,14 @@ export default function App() {
       authType: 'none',
     };
     setActiveRequest(newReq);
-    setWorkspaceMode('request');
-    setCurrentSidebarTab('collections');
+    const workbenchEl = document.getElementById('workbench');
+    if (workbenchEl) {
+      workbenchEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
+
+  const targetClientKey = activeRequest.clientKey || 'mobile-app-client';
+  const activeClient = clients.find((c) => c.clientKey === targetClientKey) || clients[0] || null;
 
   const resolvedHeadersForBurst: Record<string, string> = {};
   activeRequest.headers
@@ -623,341 +646,53 @@ export default function App() {
     });
 
   return (
-    <div className="app-root">
-      {/* 1. Global Product Header with 5 Pillar Tabs */}
-      <PostmanHeader
-        currentTab={mainTab}
-        onSelectTab={setMainTab}
-        environments={environments}
-        activeEnvironmentId={activeEnvironmentId}
-        onSelectEnvironment={setActiveEnvironmentId}
-        onOpenEnvironmentModal={() => setIsEnvModalOpen(true)}
+    <div className="app-root" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      {/* 1. Global Navigation Bar with Section Anchors */}
+      <Navbar
         health={health}
-        onOpenChaosModal={() => {
-          setMainTab('infrastructure');
-          setInfraSubTab('chaos');
-        }}
-        onOpenCreatePolicyModal={() => setIsCreatePolicyModalOpen(true)}
+        onRefresh={fetchData}
+        onOpenBurstModal={() => setIsBurstModalOpen(true)}
+        onOpenEnvModal={() => setIsEnvModalOpen(true)}
+        onOpenVisualizeModal={() => setIsVisualizeModalOpen(true)}
+        eventCount={events.length}
       />
 
-      {/* 2. Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-        {/* =========================================================================
-            PILLAR 1: DASHBOARD (Observability - The Default Screen)
-            ========================================================================= */}
-        {mainTab === 'dashboard' && (
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            <DashboardOverview
-              metrics={metrics}
-              health={health}
-              clients={clients}
-              rps={rps}
-              chartHistory={chartHistory}
-              liveRequests={liveRequests}
-              events={dashboardEvents}
-              onNavigateToTab={(tab) => {
-                if (tab === 'apiclient') setMainTab('apiclient');
-                else if (tab === 'policies') setMainTab('policies');
-                else if (tab === 'analytics') setMainTab('analytics');
-                else if (tab === 'infrastructure') setMainTab('infrastructure');
-                else if (tab === 'simulator') {
-                  setMainTab('analytics');
-                  setAnalyticsSubTab('traffic');
-                }
-              }}
-              onSelectClientForPostman={(key) => {
-                setActiveRequest((prev) => ({ ...prev, clientKey: key }));
-                setMainTab('apiclient');
-              }}
-              onSendTestRequest={handleSendTestRequest}
-              onClearEvents={() => setDashboardEvents([])}
-              onRefreshData={fetchData}
-            />
-          </div>
-        )}
-
-        {/* =========================================================================
-            PILLAR 2: API CLIENT (Postman-Style Testing Workbench)
-            ========================================================================= */}
-        {mainTab === 'apiclient' && (
-          <div className="pm-main-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-            {/* Postman Left Sidebar */}
-            <PostmanSidebar
-              collections={collections}
-              history={history}
-              activeRequestId={activeRequest.id}
-              onSelectRequest={handleSelectRequest}
-              onSelectHistory={handleSelectHistory}
-              onClearHistory={() => setHistory([])}
-              currentSidebarTab={currentSidebarTab}
-              onSelectSidebarTab={setCurrentSidebarTab}
-              onNewRequest={handleNewRequest}
-            />
-
-            {/* Postman Main Center Content */}
-            <div className="pm-content">
-              {(currentSidebarTab === 'collections' || currentSidebarTab === 'history') && (
-                <div className="pm-workspace-wrapper" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                  {workspaceMode === 'request' ? (
-                    <RequestBuilder
-                      request={activeRequest}
-                      onChangeRequest={setActiveRequest}
-                      onSend={handleSendRequest}
-                      onOpenBurst={() => setIsBurstModalOpen(true)}
-                      onOpenVisualize={() => setIsVisualizeModalOpen(true)}
-                      isLoading={isLoading}
-                      clients={clients}
-                      hasLatestResponse={latestResponse !== null}
-                      onViewLatestResponse={() => setWorkspaceMode('response')}
-                    />
-                  ) : (
-                    <ResponseViewer
-                      response={latestResponse}
-                      isLoading={isLoading}
-                      activeClient={activeClient}
-                      activeRequest={activeRequest}
-                      onBackToRequest={() => setWorkspaceMode('request')}
-                      onSend={handleSendRequest}
-                      onOpenVisualize={() => setIsVisualizeModalOpen(true)}
-                    />
-                  )}
-                </div>
-              )}
-
-              {currentSidebarTab === 'traffic' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-                  <TrafficSimulator
-                    clients={clients}
-                    selectedClient={targetClientKey}
-                    onSelectClient={(k) => {
-                      const req = { ...activeRequest, clientKey: k, bodyJson: JSON.stringify({ clientKey: k }, null, 2) };
-                      setActiveRequest(req);
-                    }}
-                    onNewTrace={(t) => setTraces((prev) => [t, ...prev].slice(0, 50))}
-                    onNewHeaderSnapshot={(h) => {
-                      setLatestSnapshot(h);
-                      setSnapshots((prev) => [h, ...prev].slice(0, 50));
-                    }}
-                    onNewEvent={(e) => setSystemEvents((prev) => [e, ...prev].slice(0, 100))}
-                  />
-                </div>
-              )}
-
-              {currentSidebarTab === 'algorithms' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-                  <AlgorithmVisualizer />
-                </div>
-              )}
-
-              {currentSidebarTab === 'observability' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-                  <TelemetryOverview
-                    metrics={metrics}
-                    health={health}
-                    clients={clients}
-                    rps={rps}
-                    chartHistory={chartHistory}
-                    onNavigateToTab={(tab) => {
-                      if (tab === 'simulator') setCurrentSidebarTab('traffic');
-                    }}
-                  />
-                </div>
-              )}
-
-              {currentSidebarTab === 'code' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-                  <ApiIntegrationHub clients={clients} />
-                </div>
-              )}
-
-              {/* Collapsible Console Log */}
-              <PostmanConsole logs={consoleLogs} onClearLogs={() => setConsoleLogs([])} />
-            </div>
-          </div>
-        )}
-
-        {/* =========================================================================
-            PILLAR 3: RATE LIMITER (Configuration & Policy Manager)
-            ========================================================================= */}
-        {mainTab === 'policies' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
-            <PolicyManager
-              clients={clients}
-              onRefresh={fetchData}
-              onOpenCreateModal={() => setIsCreatePolicyModalOpen(true)}
-              onTestClient={(key) => {
-                setActiveRequest((prev) => ({ ...prev, clientKey: key }));
-                setMainTab('apiclient');
-              }}
-            />
-          </div>
-        )}
-
-        {/* =========================================================================
-            PILLAR 4: ANALYTICS (Historical Performance & Tracing Workbench)
-            ========================================================================= */}
-        {mainTab === 'analytics' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Analytics Sub-navigation Bar */}
-            <div style={{ display: 'flex', gap: 6, padding: '10px 24px', background: '#121216', borderBottom: '1px solid #2A2A30' }}>
-              <button
-                className={`pm-sidebar-tab ${analyticsSubTab === 'benchmark' ? 'active' : ''}`}
-                onClick={() => setAnalyticsSubTab('benchmark')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Flame size={14} color="#F97316" />
-                <span>Benchmark Lab</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${analyticsSubTab === 'tracing' ? 'active' : ''}`}
-                onClick={() => setAnalyticsSubTab('tracing')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Radio size={14} color="#38BDF8" />
-                <span>Request Tracing</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${analyticsSubTab === 'headers' ? 'active' : ''}`}
-                onClick={() => setAnalyticsSubTab('headers')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Search size={14} color="#A855F7" />
-                <span>Header Inspector</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${analyticsSubTab === 'traffic' ? 'active' : ''}`}
-                onClick={() => setAnalyticsSubTab('traffic')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Zap size={14} color="#22C55E" />
-                <span>Traffic Simulator</span>
-              </button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-              {analyticsSubTab === 'benchmark' && <BenchmarkLab clients={clients} />}
-              {analyticsSubTab === 'tracing' && (
-                <RequestTracing traces={traces} onClearTraces={() => setTraces([])} />
-              )}
-              {analyticsSubTab === 'headers' && (
-                <HeaderInspector
-                  latestSnapshot={latestSnapshot}
-                  snapshots={snapshots}
-                  clients={clients}
-                  onTriggerCheck={(k) => handleSendTestRequest(k, '/v1/check')}
-                />
-              )}
-              {analyticsSubTab === 'traffic' && (
-                <TrafficSimulator
-                  clients={clients}
-                  selectedClient={targetClientKey}
-                  onSelectClient={(k) => {
-                    const req = { ...activeRequest, clientKey: k, bodyJson: JSON.stringify({ clientKey: k }, null, 2) };
-                    setActiveRequest(req);
-                  }}
-                  onNewTrace={(t) => setTraces((prev) => [t, ...prev].slice(0, 50))}
-                  onNewHeaderSnapshot={(h) => {
-                    setLatestSnapshot(h);
-                    setSnapshots((prev) => [h, ...prev].slice(0, 50));
-                  }}
-                  onNewEvent={(e) => setSystemEvents((prev) => [e, ...prev].slice(0, 100))}
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* =========================================================================
-            PILLAR 5: INFRASTRUCTURE (Distributed Monitoring & Chaos Workbench)
-            ========================================================================= */}
-        {mainTab === 'infrastructure' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Infrastructure Sub-navigation Bar */}
-            <div style={{ display: 'flex', gap: 6, padding: '10px 24px', background: '#121216', borderBottom: '1px solid #2A2A30' }}>
-              <button
-                className={`pm-sidebar-tab ${infraSubTab === 'telemetry' ? 'active' : ''}`}
-                onClick={() => setInfraSubTab('telemetry')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Server size={14} color="#F97316" />
-                <span>Instance Telemetry</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${infraSubTab === 'chaos' ? 'active' : ''}`}
-                onClick={() => setInfraSubTab('chaos')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Sparkles size={14} color="#A855F7" />
-                <span>Chaos Lab</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${infraSubTab === 'algorithms' ? 'active' : ''}`}
-                onClick={() => setInfraSubTab('algorithms')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <BookOpen size={14} color="#38BDF8" />
-                <span>Algorithm Sandbox</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${infraSubTab === 'telemetry_overview' ? 'active' : ''}`}
-                onClick={() => setInfraSubTab('telemetry_overview')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Activity size={14} color="#22C55E" />
-                <span>Cluster Topology</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${infraSubTab === 'code' ? 'active' : ''}`}
-                onClick={() => setInfraSubTab('code')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Code2 size={14} color="#FB923C" />
-                <span>API Code Hub</span>
-              </button>
-              <button
-                className={`pm-sidebar-tab ${infraSubTab === 'events' ? 'active' : ''}`}
-                onClick={() => setInfraSubTab('events')}
-                style={{ padding: '6px 14px', fontSize: 12 }}
-              >
-                <Sliders size={14} color="#A1A1AA" />
-                <span>System Event Stream</span>
-              </button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-              {infraSubTab === 'telemetry' && <InstanceTelemetry health={health} metrics={metrics} />}
-              {infraSubTab === 'chaos' && (
-                <ChaosLab
-                  onNewEvent={(e) => setSystemEvents((prev) => [e, ...prev].slice(0, 100))}
-                  onTriggerSurge={() => handleSendTestRequest('surge-client', '/v1/check')}
-                />
-              )}
-              {infraSubTab === 'algorithms' && <AlgorithmVisualizer />}
-              {infraSubTab === 'telemetry_overview' && (
-                <TelemetryOverview
-                  metrics={metrics}
-                  health={health}
-                  clients={clients}
-                  rps={rps}
-                  chartHistory={chartHistory}
-                  onNavigateToTab={(t) => {
-                    if (t === 'simulator') {
-                      setMainTab('analytics');
-                      setAnalyticsSubTab('traffic');
-                    } else if (t === 'policies') {
-                      setMainTab('policies');
-                    }
-                  }}
-                />
-              )}
-              {infraSubTab === 'code' && <ApiIntegrationHub clients={clients} />}
-              {infraSubTab === 'events' && (
-                <SystemEventStream events={systemEvents} onClearEvents={() => setSystemEvents([])} />
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* 2. Main Unified Single Page Container */}
+      <main style={{ flex: 1, overflowY: 'auto', background: '#0D0D0F' }}>
+        <UnifiedWorkbench
+          metrics={metrics}
+          health={health}
+          clients={clients}
+          rps={rps}
+          chartHistory={chartHistory}
+          liveRequests={liveRequests}
+          events={events}
+          collections={collections}
+          history={history}
+          activeRequest={activeRequest}
+          onChangeRequest={setActiveRequest}
+          onSendRequest={handleSendRequest}
+          onSelectRequest={handleSelectRequest}
+          onSelectHistory={handleSelectHistory}
+          onClearHistory={() => setHistory([])}
+          onNewRequest={handleNewRequest}
+          currentSidebarTab={currentSidebarTab}
+          onSelectSidebarTab={setCurrentSidebarTab}
+          isLoading={isLoading}
+          latestResponse={latestResponse}
+          onOpenBurst={() => setIsBurstModalOpen(true)}
+          onOpenVisualize={() => setIsVisualizeModalOpen(true)}
+          onOpenEnvModal={() => setIsEnvModalOpen(true)}
+          onConsumeTokenDirect={handleConsumeTokenDirect}
+          onSendTestRequest={async (clientKey: string) => {
+            await handleConsumeTokenDirect(clientKey, 1);
+          }}
+          onClearEvents={() => setEvents([])}
+          onRefreshData={fetchData}
+          consoleLogs={consoleLogs}
+          onClearConsoleLogs={() => setConsoleLogs([])}
+        />
+      </main>
 
       {/* =========================================================================
           MODALS
@@ -990,7 +725,7 @@ export default function App() {
         isOpen={isVisualizeModalOpen}
         onClose={() => setIsVisualizeModalOpen(false)}
         activeClient={activeClient}
-        remainingTokens={latestResponse?.remaining ?? 20}
+        remainingTokens={latestResponse?.remaining ?? 16}
         burstLimit={latestResponse?.limit ?? 20}
       />
 
@@ -1000,184 +735,13 @@ export default function App() {
         onClose={() => setIsEnvModalOpen(false)}
         environments={environments}
         activeEnvironmentId={activeEnvironmentId}
-        onUpdateEnvironments={setEnvironments}
+        onUpdateEnvironments={(updated) => {
+          setEnvironments(updated);
+          if (!updated.some((e) => e.id === activeEnvironmentId) && updated.length > 0) {
+            setActiveEnvironmentId(updated[0].id);
+          }
+        }}
       />
-
-      {/* 4. Create Policy Modal */}
-      {isCreatePolicyModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-card" style={{ maxWidth: 460 }}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Plus size={18} color="#F97316" />
-                <h3>Create Rate Limiting Policy</h3>
-              </div>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => setIsCreatePolicyModalOpen(false)}
-                style={{ padding: '4px 8px' }}
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePolicy} style={{ padding: 20 }}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6, color: '#F4F4F5' }}>
-                  Client Key (Identifier)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. mobile-app-v2, user-10293, payment-gateway"
-                  value={newClientKey}
-                  onChange={(e) => setNewClientKey(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    background: '#121216',
-                    border: '1px solid #2A2A30',
-                    color: '#F4F4F5',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontFamily: 'var(--font-mono)',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6, color: '#F4F4F5' }}>
-                  Rate Limiting Algorithm
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <button
-                    type="button"
-                    onClick={() => setNewAlgorithm('token_bucket')}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 6,
-                      border: newAlgorithm === 'token_bucket' ? '1px solid #F97316' : '1px solid #2A2A30',
-                      background: newAlgorithm === 'token_bucket' ? 'rgba(249, 115, 22, 0.15)' : '#202024',
-                      color: newAlgorithm === 'token_bucket' ? '#F97316' : '#A1A1AA',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Token Bucket
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewAlgorithm('sliding_window')}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 6,
-                      border: newAlgorithm === 'sliding_window' ? '1px solid #A855F7' : '1px solid #2A2A30',
-                      background: newAlgorithm === 'sliding_window' ? 'rgba(168, 85, 247, 0.15)' : '#202024',
-                      color: newAlgorithm === 'sliding_window' ? '#A855F7' : '#A1A1AA',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Sliding Window Log
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6, color: '#F4F4F5' }}>
-                    Quota Rate (RPS)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newRps}
-                    onChange={(e) => setNewRps(Number(e.target.value))}
-                    required
-                    style={{
-                      width: '100%',
-                      background: '#121216',
-                      border: '1px solid #2A2A30',
-                      color: '#F4F4F5',
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontFamily: 'var(--font-mono)',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-
-                {newAlgorithm === 'token_bucket' ? (
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6, color: '#F4F4F5' }}>
-                      Burst Size (Capacity)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={newBurstSize}
-                      onChange={(e) => setNewBurstSize(Number(e.target.value))}
-                      required
-                      style={{
-                        width: '100%',
-                        background: '#121216',
-                        border: '1px solid #2A2A30',
-                        color: '#F4F4F5',
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontFamily: 'var(--font-mono)',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6, color: '#F4F4F5' }}>
-                      Window Size (Sec)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={newWindowSize}
-                      onChange={(e) => setNewWindowSize(Number(e.target.value))}
-                      required
-                      style={{
-                        width: '100%',
-                        background: '#121216',
-                        border: '1px solid #2A2A30',
-                        color: '#F4F4F5',
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontFamily: 'var(--font-mono)',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setIsCreatePolicyModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Create Policy
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

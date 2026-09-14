@@ -5,16 +5,12 @@ import {
   ChevronDown,
   Clock,
   Search,
-  FlaskConical,
-  BrainCircuit,
-  Activity,
-  Code2,
   Trash2,
   Plus
 } from 'lucide-react';
 import { RequestCollection, RequestTemplate, HistoryItem, HttpMethod } from '../../types/postman';
 
-export type SidebarTab = 'collections' | 'history' | 'traffic' | 'algorithms' | 'observability' | 'code';
+export type SidebarTab = 'collections' | 'history';
 
 interface PostmanSidebarProps {
   collections: RequestCollection[];
@@ -73,6 +69,33 @@ export const PostmanSidebar: React.FC<PostmanSidebarProps> = ({
 
   return (
     <aside className="pm-sidebar">
+      {/* Workspace Header */}
+      <div style={{ padding: '10px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #202024' }}>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#71717A', textTransform: 'uppercase' }}>
+          WORKSPACE
+        </span>
+        <button
+          onClick={onNewRequest}
+          title="New Request (+)"
+          style={{
+            background: 'rgba(249, 115, 22, 0.12)',
+            border: '1px solid rgba(249, 115, 22, 0.3)',
+            color: '#F97316',
+            borderRadius: 4,
+            padding: '2px 6px',
+            fontSize: 10.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+          }}
+        >
+          <Plus size={11} />
+          <span>NEW</span>
+        </button>
+      </div>
+
       {/* Sidebar Mode Tabs */}
       <div className="pm-sidebar-nav">
         <button
@@ -91,38 +114,6 @@ export const PostmanSidebar: React.FC<PostmanSidebarProps> = ({
         >
           <Clock size={14} />
           <span style={{ whiteSpace: 'nowrap' }}>History ({history.length})</span>
-        </button>
-
-        <button
-          className={`pm-sidebar-tab pm-sidebar-tab-icon ${currentSidebarTab === 'traffic' ? 'active' : ''}`}
-          onClick={() => onSelectSidebarTab('traffic')}
-          title="Traffic & Stress Lab"
-        >
-          <FlaskConical size={14} />
-        </button>
-
-        <button
-          className={`pm-sidebar-tab pm-sidebar-tab-icon ${currentSidebarTab === 'algorithms' ? 'active' : ''}`}
-          onClick={() => onSelectSidebarTab('algorithms')}
-          title="Algorithm Sandbox"
-        >
-          <BrainCircuit size={14} />
-        </button>
-
-        <button
-          className={`pm-sidebar-tab pm-sidebar-tab-icon ${currentSidebarTab === 'observability' ? 'active' : ''}`}
-          onClick={() => onSelectSidebarTab('observability')}
-          title="Telemetry & Observability"
-        >
-          <Activity size={14} />
-        </button>
-
-        <button
-          className={`pm-sidebar-tab pm-sidebar-tab-icon ${currentSidebarTab === 'code' ? 'active' : ''}`}
-          onClick={() => onSelectSidebarTab('code')}
-          title="Developer Code Hub"
-        >
-          <Code2 size={14} />
         </button>
       </div>
 
@@ -313,42 +304,6 @@ export const PostmanSidebar: React.FC<PostmanSidebarProps> = ({
                   })}
               </div>
             )}
-          </div>
-        )}
-
-        {currentSidebarTab === 'traffic' && (
-          <div style={{ fontSize: 12, color: '#A1A1AA', padding: 8 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6, color: '#F97316' }}>Traffic & Stress Lab</div>
-            <p style={{ color: '#71717A', fontSize: 11.5, marginBottom: 12 }}>
-              Execute high-concurrency request bursts, automated background traffic bots, and fault injections.
-            </p>
-          </div>
-        )}
-
-        {currentSidebarTab === 'algorithms' && (
-          <div style={{ fontSize: 12, color: '#A1A1AA', padding: 8 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6, color: '#A855F7' }}>Algorithm Visualizer Lab</div>
-            <p style={{ color: '#71717A', fontSize: 11.5, marginBottom: 12 }}>
-              Interactive step-by-step simulations of Token Bucket Continuous Refill vs. Sliding Window Log.
-            </p>
-          </div>
-        )}
-
-        {currentSidebarTab === 'observability' && (
-          <div style={{ fontSize: 12, color: '#A1A1AA', padding: 8 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6, color: '#22C55E' }}>Cluster Observability</div>
-            <p style={{ color: '#71717A', fontSize: 11.5, marginBottom: 12 }}>
-              Real-time RPS throughput chart, node latency percentiles (p50/p95/p99), and Redis Lua engine status.
-            </p>
-          </div>
-        )}
-
-        {currentSidebarTab === 'code' && (
-          <div style={{ fontSize: 12, color: '#A1A1AA', padding: 8 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6, color: '#FB923C' }}>Developer API & Code Hub</div>
-            <p style={{ color: '#71717A', fontSize: 11.5, marginBottom: 12 }}>
-              Multi-language code snippets (cURL, TypeScript, Python, Go, Nginx).
-            </p>
           </div>
         )}
       </div>
