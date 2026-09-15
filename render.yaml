@@ -1,0 +1,30 @@
+services:
+  # 1. Backend Rate Limiter Service
+  - type: web
+    name: rate-limiter-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm run install:all && npm run build:frontend && npm run prisma:generate && npm run prisma:push && npm run build:backend
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rate-limiter-db
+          property: connectionString
+      - key: ADMIN_API_KEY
+        generateValue: true
+
+# 2. Managed PostgreSQL Database
+databases:
+  - name: rate-limiter-db
+    plan: free
+    region: oregon
+    databaseName: rate_limiter
+    user: postgres
