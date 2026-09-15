@@ -74,6 +74,30 @@ export const InstanceTelemetry: React.FC<InstanceTelemetryProps> = ({ health, me
     },
   ]);
 
+  // Sync metrics changes
+  useEffect(() => {
+    setNodes((prev) => [
+      {
+        ...prev[0],
+        totalProcessed: Math.floor((metrics.totalRequests || 0) * 0.55),
+        allowed: Math.floor((metrics.allowedRequests || 0) * 0.55),
+        denied: Math.floor((metrics.deniedRequests || 0) * 0.55),
+      },
+      {
+        ...prev[1],
+        totalProcessed: Math.floor((metrics.totalRequests || 0) * 0.3),
+        allowed: Math.floor((metrics.allowedRequests || 0) * 0.3),
+        denied: Math.floor((metrics.deniedRequests || 0) * 0.3),
+      },
+      {
+        ...prev[2],
+        totalProcessed: Math.floor((metrics.totalRequests || 0) * 0.15),
+        allowed: Math.floor((metrics.allowedRequests || 0) * 0.15),
+        denied: Math.floor((metrics.deniedRequests || 0) * 0.15),
+      },
+    ]);
+  }, [metrics]);
+
   // Jitter slightly for live simulation
   useEffect(() => {
     const timer = setInterval(() => {

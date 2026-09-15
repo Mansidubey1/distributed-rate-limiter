@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Zap,
-  Clock,
-  Sparkles
+  Clock
 } from 'lucide-react';
 import { ResponseSnapshot } from '../../types/postman';
 import { Client } from '../../types';
@@ -10,13 +9,11 @@ import { Client } from '../../types';
 interface RateLimiterStatePanelProps {
   latestResponse: ResponseSnapshot | null;
   activeClient: Client | null;
-  onOpenVisualize: () => void;
 }
 
 export const RateLimiterStatePanel: React.FC<RateLimiterStatePanelProps> = ({
   latestResponse,
   activeClient,
-  onOpenVisualize,
 }) => {
   const [countdownSec, setCountdownSec] = useState<string>('0.0s');
 
@@ -51,16 +48,6 @@ export const RateLimiterStatePanel: React.FC<RateLimiterStatePanelProps> = ({
           <Zap size={14} color="#A855F7" />
           <span>Rate Limit State</span>
         </div>
-
-        <button
-          className="btn btn-visualize btn-sm"
-          onClick={onOpenVisualize}
-          title="Open Animated Visualizer"
-          style={{ padding: '3px 8px', fontSize: 11 }}
-        >
-          <Sparkles size={11} />
-          <span>Visualize</span>
-        </button>
       </div>
 
       {/* Grid of Key Properties */}

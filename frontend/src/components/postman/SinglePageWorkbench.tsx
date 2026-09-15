@@ -22,7 +22,6 @@ interface SinglePageWorkbenchProps {
   onChangeRequest: (updated: RequestTemplate) => void;
   onSend: () => void;
   onOpenBurst: () => void;
-  onOpenVisualize: () => void;
   isLoading: boolean;
   latestResponse: ResponseSnapshot | null;
   clients: Client[];

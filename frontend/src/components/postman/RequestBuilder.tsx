@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Send,
   Flame,
-  Sparkles,
   Plus,
   Trash2,
   Copy,
@@ -24,7 +23,6 @@ interface RequestBuilderProps {
   onChangeRequest: (updated: RequestTemplate) => void;
   onSend: () => void;
   onOpenBurst: () => void;
-  onOpenVisualize: () => void;
   isLoading: boolean;
   clients: Client[];
   hasLatestResponse?: boolean;
@@ -36,7 +34,6 @@ export const RequestBuilder: React.FC<RequestBuilderProps> = ({
   onChangeRequest,
   onSend,
   onOpenBurst,
-  onOpenVisualize,
   isLoading,
   clients,
   hasLatestResponse,
@@ -493,15 +490,6 @@ func main() {
           >
             <Flame size={13} />
             <span>BURST</span>
-          </button>
-
-          <button
-            className="btn btn-visualize"
-            onClick={onOpenVisualize}
-            title="Live Algorithm Physics Visualizer"
-          >
-            <Sparkles size={13} />
-            <span>VISUALIZE</span>
           </button>
         </div>
       </div>

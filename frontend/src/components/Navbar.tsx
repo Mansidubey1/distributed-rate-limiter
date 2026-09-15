@@ -10,7 +10,6 @@ import {
   List,
   Flame,
   Sliders,
-  Sparkles
 } from 'lucide-react';
 import { Health } from '../types';
 import { soundFX } from '../utils/helpers';
@@ -21,7 +20,6 @@ interface NavbarProps {
   onRefresh: () => void;
   onOpenBurstModal?: () => void;
   onOpenEnvModal?: () => void;
-  onOpenVisualizeModal?: () => void;
   eventCount?: number;
 }
 
@@ -30,7 +28,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRefresh,
   onOpenBurstModal,
   onOpenEnvModal,
-  onOpenVisualizeModal,
 }) => {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('workbench');
@@ -220,17 +217,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Physics Visualizer Trigger */}
-          {onOpenVisualizeModal && (
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={onOpenVisualizeModal}
-              title="Launch Live Physics Visualizer"
-              style={{ padding: '5px 8px', color: '#A855F7' }}
-            >
-              <Sparkles size={13} color="#A855F7" />
-            </button>
-          )}
+
 
           {/* Burst Button */}
           {onOpenBurstModal && (

@@ -5,7 +5,6 @@ import {
   Copy,
   Clock,
   Zap,
-  Sparkles,
   RefreshCw,
   Send,
   Sliders,
@@ -24,7 +23,6 @@ interface ResponseViewerProps {
   activeRequest: RequestTemplate;
   onBackToRequest: () => void;
   onSend: () => void;
-  onOpenVisualize: () => void;
 }
 
 export const ResponseViewer: React.FC<ResponseViewerProps> = ({
@@ -34,7 +32,6 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({
   activeRequest,
   onBackToRequest,
   onSend,
-  onOpenVisualize,
 }) => {
   const [activeTab, setActiveTab] = useState<'body' | 'headers' | 'timeline' | 'limiter'>('body');
   const [copied, setCopied] = useState(false);
@@ -164,15 +161,6 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({
           >
             {isLoading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
             <span>Send Again</span>
-          </button>
-
-          <button
-            className="btn btn-visualize btn-sm"
-            onClick={onOpenVisualize}
-            title="Live Algorithm Physics Visualizer"
-          >
-            <Sparkles size={12} />
-            <span>Visualize</span>
           </button>
         </div>
       </div>
@@ -432,7 +420,6 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({
               <RateLimiterStatePanel
                 latestResponse={response}
                 activeClient={activeClient}
-                onOpenVisualize={onOpenVisualize}
               />
             )}
           </div>

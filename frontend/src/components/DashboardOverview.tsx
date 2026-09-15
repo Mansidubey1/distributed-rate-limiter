@@ -46,7 +46,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onRefreshData,
 }) => {
   // Peak RPS tracking
-  const [peakRps, setPeakRps] = useState<number>(() => Math.max(rps, 24));
+  const [peakRps, setPeakRps] = useState<number>(() => Math.max(rps, 0));
   useEffect(() => {
     if (rps > peakRps) {
       setPeakRps(rps);
@@ -141,10 +141,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [activityFilter, setActivityFilter] = useState<'ALL' | '200' | '429'>('ALL');
 
   // Compute total & rates
-  const totalAllowed = metrics.allowedRequests || 26821;
-  const totalDenied = metrics.deniedRequests || 743;
-  const denyPercentage = ((totalDenied / (totalAllowed + totalDenied || 1)) * 100).toFixed(1);
-  const activeKeysCount = clients.length || 42;
+  const totalAllowed = metrics.allowedRequests ?? 0;
+  const totalDenied = metrics.deniedRequests ?? 0;
+  const total = totalAllowed + totalDenied;
+  const denyPercentage = total > 0 ? ((totalDenied / total) * 100).toFixed(1) : '0.0';
+  const activeKeysCount = clients.length;
 
   // Real-time Smooth Canvas Chart Rendering
   useEffect(() => {
@@ -509,7 +510,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               >
                 <span style={{ fontSize: 12, color: '#A1A1AA', fontWeight: 600 }}>RPS</span>
                 <span style={{ fontSize: 18, fontWeight: 800, color: '#F97316', fontFamily: 'var(--font-mono)' }}>
-                  {rps || 482}
+                  {rps}
                 </span>
               </div>
 
@@ -526,7 +527,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               >
                 <span style={{ fontSize: 12, color: '#A1A1AA', fontWeight: 600 }}>Peak</span>
                 <span style={{ fontSize: 18, fontWeight: 800, color: '#F4F4F5', fontFamily: 'var(--font-mono)' }}>
-                  {peakRps || 517}
+                  {peakRps}
                 </span>
               </div>
 

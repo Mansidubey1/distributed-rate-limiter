@@ -33,9 +33,9 @@ export const TelemetryOverview: React.FC<TelemetryOverviewProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const total = metrics.allowedRequests + metrics.deniedRequests || 1;
-  const allowRate = ((metrics.allowedRequests / total) * 100).toFixed(1);
-  const denyRate = ((metrics.deniedRequests / total) * 100).toFixed(1);
+  const total = (metrics.allowedRequests || 0) + (metrics.deniedRequests || 0);
+  const allowRate = total > 0 ? (((metrics.allowedRequests || 0) / total) * 100).toFixed(1) : '100.0';
+  const denyRate = total > 0 ? (((metrics.deniedRequests || 0) / total) * 100).toFixed(1) : '0.0';
 
   useEffect(() => {
     const canvas = canvasRef.current;

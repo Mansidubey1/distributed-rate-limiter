@@ -17,7 +17,6 @@ import { defaultCollections, defaultEnvironments } from './data/defaultCollectio
 import { Navbar } from './components/Navbar';
 import { UnifiedWorkbench, SidebarTab } from './components/UnifiedWorkbench';
 import { BurstModal } from './components/postman/BurstModal';
-import { VisualizeModal } from './components/postman/VisualizeModal';
 import { EnvironmentModal } from './components/postman/EnvironmentModal';
 import { soundFX } from './utils/helpers';
 
@@ -82,15 +81,14 @@ export default function App() {
 
   // Modals
   const [isBurstModalOpen, setIsBurstModalOpen] = useState<boolean>(false);
-  const [isVisualizeModalOpen, setIsVisualizeModalOpen] = useState<boolean>(false);
   const [isEnvModalOpen, setIsEnvModalOpen] = useState<boolean>(false);
 
   // Live Cluster Data
   const [metrics, setMetrics] = useState<Metrics>({
-    totalRequests: 27564,
-    allowedRequests: 26821,
-    deniedRequests: 743,
-    clients: 42,
+    totalRequests: 0,
+    allowedRequests: 0,
+    deniedRequests: 0,
+    clients: 0,
   });
   const [health, setHealth] = useState<Health | null>({
     status: 'ok',
@@ -213,6 +211,7 @@ export default function App() {
     },
   ]);
 
+  const isInitializedRef = useRef<boolean>(false);
   const prevTotalRef = useRef<number>(0);
   const prevAllowedRef = useRef<number>(0);
   const prevDeniedRef = useRef<number>(0);
@@ -236,7 +235,13 @@ export default function App() {
 
         const now = Date.now();
         const diffSec = (now - prevTimeRef.current) / 1000;
-        if (diffSec >= 1 && prevTotalRef.current > 0) {
+        if (!isInitializedRef.current) {
+          prevTotalRef.current = m.totalRequests;
+          prevAllowedRef.current = m.allowedRequests;
+          prevDeniedRef.current = m.deniedRequests;
+          prevTimeRef.current = now;
+          isInitializedRef.current = true;
+        } else if (diffSec >= 0.8) {
           const reqDiff = Math.max(0, m.totalRequests - prevTotalRef.current);
           const currentRps = Math.round(reqDiff / diffSec);
           setRps(currentRps);
@@ -246,11 +251,6 @@ export default function App() {
 
           setChartHistory((prev) => [...prev.slice(1), { allowed: allowedDiff, denied: deniedDiff }]);
 
-          prevTotalRef.current = m.totalRequests;
-          prevAllowedRef.current = m.allowedRequests;
-          prevDeniedRef.current = m.deniedRequests;
-          prevTimeRef.current = now;
-        } else if (prevTotalRef.current === 0) {
           prevTotalRef.current = m.totalRequests;
           prevAllowedRef.current = m.allowedRequests;
           prevDeniedRef.current = m.deniedRequests;
@@ -636,7 +636,6 @@ export default function App() {
   };
 
   const targetClientKey = activeRequest.clientKey || 'mobile-app-client';
-  const activeClient = clients.find((c) => c.clientKey === targetClientKey) || clients[0] || null;
 
   const resolvedHeadersForBurst: Record<string, string> = {};
   activeRequest.headers
@@ -653,7 +652,6 @@ export default function App() {
         onRefresh={fetchData}
         onOpenBurstModal={() => setIsBurstModalOpen(true)}
         onOpenEnvModal={() => setIsEnvModalOpen(true)}
-        onOpenVisualizeModal={() => setIsVisualizeModalOpen(true)}
         eventCount={events.length}
       />
 
@@ -681,7 +679,6 @@ export default function App() {
           isLoading={isLoading}
           latestResponse={latestResponse}
           onOpenBurst={() => setIsBurstModalOpen(true)}
-          onOpenVisualize={() => setIsVisualizeModalOpen(true)}
           onOpenEnvModal={() => setIsEnvModalOpen(true)}
           onConsumeTokenDirect={handleConsumeTokenDirect}
           onSendTestRequest={async (clientKey: string) => {
@@ -720,16 +717,7 @@ export default function App() {
         }}
       />
 
-      {/* 2. Physics Visualizer Modal */}
-      <VisualizeModal
-        isOpen={isVisualizeModalOpen}
-        onClose={() => setIsVisualizeModalOpen(false)}
-        activeClient={activeClient}
-        remainingTokens={latestResponse?.remaining ?? 16}
-        burstLimit={latestResponse?.limit ?? 20}
-      />
-
-      {/* 3. Environment Variable Manager Modal */}
+      {/* 2. Environment Variable Manager Modal */}
       <EnvironmentModal
         isOpen={isEnvModalOpen}
         onClose={() => setIsEnvModalOpen(false)}

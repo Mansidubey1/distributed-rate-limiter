@@ -60,7 +60,6 @@ interface UnifiedWorkbenchProps {
   isLoading: boolean;
   latestResponse: ResponseSnapshot | null;
   onOpenBurst?: () => void;
-  onOpenVisualize?: () => void;
   onOpenEnvModal?: () => void;
   onConsumeTokenDirect?: (clientKey: string, count: number) => Promise<any>;
   onSendTestRequest?: (clientKey: string, endpoint?: string) => Promise<any>;
@@ -362,10 +361,11 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
   const [activityFilter, setActivityFilter] = useState<'ALL' | '200' | '429'>('ALL');
 
   // Compute total & rates
-  const totalAllowed = metrics.allowedRequests || 26821;
-  const totalDenied = metrics.deniedRequests || 743;
-  const denyPercentage = ((totalDenied / (totalAllowed + totalDenied || 1)) * 100).toFixed(1);
-  const activeKeysCount = clients.length || 42;
+  const totalAllowed = metrics.allowedRequests ?? 0;
+  const totalDenied = metrics.deniedRequests ?? 0;
+  const total = totalAllowed + totalDenied;
+  const denyPercentage = total > 0 ? ((totalDenied / total) * 100).toFixed(1) : '0.0';
+  const activeKeysCount = clients.length;
 
 
   // Real-time Canvas Graph
@@ -1467,7 +1467,7 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
               >
                 <span style={{ fontSize: 11.5, color: '#A1A1AA', fontWeight: 600 }}>Throughput (RPS)</span>
                 <span style={{ fontSize: 22, fontWeight: 800, color: '#F97316', fontFamily: 'var(--font-mono)' }}>
-                  {rps || 482}
+                  {rps}
                 </span>
               </div>
 
@@ -1484,7 +1484,7 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
               >
                 <span style={{ fontSize: 11.5, color: '#A1A1AA', fontWeight: 600 }}>Peak Throughput</span>
                 <span style={{ fontSize: 22, fontWeight: 800, color: '#F4F4F5', fontFamily: 'var(--font-mono)' }}>
-                  {peakRps || 517}
+                  {peakRps}
                 </span>
               </div>
 
@@ -1679,33 +1679,177 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
               SYSTEM INFRASTRUCTURE
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#202024', borderRadius: 6, border: '1px solid #2A2A30' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Server size={14} color="#F97316" />
-                  <span style={{ fontSize: 12, color: '#A1A1AA' }}>API Gateway</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {/* API Gateway Card */}
+              <div
+                style={{
+                  background: '#202024',
+                  border: '1px solid #2A2A30',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '14px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 8,
+                    background: 'rgba(249, 115, 22, 0.12)',
+                    border: '1px solid rgba(249, 115, 22, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Server size={18} color="#F97316" />
                 </div>
-                <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 700 }}>HEALTHY</span>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#F4F4F5' }}>API Gateway</div>
+                  <div style={{ fontSize: 10.5, color: '#71717A', marginTop: 2 }}>Fastify Router</div>
+                </div>
+                <div
+                  style={{
+                    marginTop: 'auto',
+                    padding: '3px 9px',
+                    borderRadius: 12,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: 'rgba(34, 197, 94, 0.12)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    color: '#22C55E',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }}></span>
+                  <span>HEALTHY</span>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#202024', borderRadius: 6, border: '1px solid #2A2A30' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Database size={14} color="#A855F7" />
-                  <span style={{ fontSize: 12, color: '#A1A1AA' }}>Redis Cache (Lua)</span>
+              {/* Redis Cache Card */}
+              <div
+                style={{
+                  background: '#202024',
+                  border: '1px solid #2A2A30',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '14px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 8,
+                    background: 'rgba(168, 85, 247, 0.12)',
+                    border: '1px solid rgba(168, 85, 247, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Database size={18} color="#A855F7" />
                 </div>
-                <span style={{ fontSize: 11, color: health?.services?.redis === 'healthy' ? '#22C55E' : '#F59E0B', fontWeight: 700 }}>
-                  {health?.services?.redis || 'healthy'}
-                </span>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#F4F4F5' }}>Redis Cache</div>
+                  <div style={{ fontSize: 10.5, color: '#71717A', marginTop: 2 }}>Lua State Engine</div>
+                </div>
+                <div
+                  style={{
+                    marginTop: 'auto',
+                    padding: '3px 9px',
+                    borderRadius: 12,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background:
+                      health?.services?.redis === 'healthy'
+                        ? 'rgba(34, 197, 94, 0.12)'
+                        : 'rgba(245, 158, 11, 0.12)',
+                    border: `1px solid ${
+                      health?.services?.redis === 'healthy'
+                        ? 'rgba(34, 197, 94, 0.3)'
+                        : 'rgba(245, 158, 11, 0.3)'
+                    }`,
+                    color: health?.services?.redis === 'healthy' ? '#22C55E' : '#F59E0B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: '50%',
+                      background: health?.services?.redis === 'healthy' ? '#22C55E' : '#F59E0B',
+                    }}
+                  ></span>
+                  <span>{health?.services?.redis || 'healthy'}</span>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#202024', borderRadius: 6, border: '1px solid #2A2A30' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Globe size={14} color="#38BDF8" />
-                  <span style={{ fontSize: 12, color: '#A1A1AA' }}>PostgreSQL</span>
+              {/* PostgreSQL Card */}
+              <div
+                style={{
+                  background: '#202024',
+                  border: '1px solid #2A2A30',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '14px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 8,
+                    background: 'rgba(56, 189, 248, 0.12)',
+                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Globe size={18} color="#38BDF8" />
                 </div>
-                <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 700 }}>
-                  {health?.database || 'connected'}
-                </span>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#F4F4F5' }}>PostgreSQL</div>
+                  <div style={{ fontSize: 10.5, color: '#71717A', marginTop: 2 }}>Policy Database</div>
+                </div>
+                <div
+                  style={{
+                    marginTop: 'auto',
+                    padding: '3px 9px',
+                    borderRadius: 12,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: 'rgba(34, 197, 94, 0.12)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    color: '#22C55E',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }}></span>
+                  <span>{health?.database || 'connected'}</span>
+                </div>
               </div>
             </div>
           </div>
