@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/dashboard/',
+  base: '/',
   server: {
     port: 5173,
     proxy: {
@@ -13,7 +13,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../backend/public/dashboard-dist',
+    outDir: 'dist',
     emptyOutDir: true,
   },
 });

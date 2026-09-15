@@ -34,7 +34,7 @@ import {
   RequestCollection
 } from '../types/postman';
 import { demoApiPresets } from '../data/defaultCollections';
-import { soundFX, formatTime } from '../utils/helpers';
+import { soundFX, formatTime, getApiUrl } from '../utils/helpers';
 
 export type SidebarTab = 'collections' | 'history';
 
@@ -198,7 +198,7 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
         let data: any = {};
 
         if (isInternalCheck) {
-          res = await fetch('/v1/check', {
+          res = await fetch(getApiUrl('/v1/check'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -214,7 +214,7 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
           });
           data = await res.json().catch(() => ({}));
         } else {
-          res = await fetch('/v1/proxy', {
+          res = await fetch(getApiUrl('/v1/proxy'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -271,7 +271,7 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
         const startTime = performance.now();
         const promises = Array.from({ length: count }, () => {
           if (isInternalCheck) {
-            return fetch('/v1/check', {
+            return fetch(getApiUrl('/v1/check'), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -284,7 +284,7 @@ export const UnifiedWorkbench: React.FC<UnifiedWorkbenchProps> = ({
               }),
             }).then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }));
           } else {
-            return fetch('/v1/proxy', {
+            return fetch(getApiUrl('/v1/proxy'), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

@@ -18,7 +18,7 @@ import { Navbar } from './components/Navbar';
 import { UnifiedWorkbench, SidebarTab } from './components/UnifiedWorkbench';
 import { BurstModal } from './components/postman/BurstModal';
 import { EnvironmentModal } from './components/postman/EnvironmentModal';
-import { soundFX } from './utils/helpers';
+import { soundFX, getApiUrl } from './utils/helpers';
 
 export default function App() {
   // Environments & Collections
@@ -221,14 +221,14 @@ export default function App() {
   const fetchData = async () => {
     try {
       // 1. Health
-      const healthRes = await fetch('/health');
+      const healthRes = await fetch(getApiUrl('/health'));
       if (healthRes.ok) {
         const h: Health = await healthRes.json();
         setHealth(h);
       }
 
       // 2. Metrics
-      const metricsRes = await fetch('/metrics');
+      const metricsRes = await fetch(getApiUrl('/metrics'));
       if (metricsRes.ok) {
         const m: Metrics = await metricsRes.json();
         setMetrics(m);
@@ -259,7 +259,7 @@ export default function App() {
       }
 
       // 3. Clients
-      const clientsRes = await fetch('/v1/admin/clients');
+      const clientsRes = await fetch(getApiUrl('/v1/admin/clients'));
       if (clientsRes.ok) {
         const c: Client[] = await clientsRes.json();
         if (Array.isArray(c) && c.length > 0) {
@@ -295,7 +295,7 @@ export default function App() {
   const handleConsumeTokenDirect = async (clientKey: string, count: number = 1) => {
     try {
       const targetClient = clients.find((c) => c.clientKey === clientKey) || clients[0];
-      const res = await fetch('/v1/check', {
+      const res = await fetch(getApiUrl('/v1/check'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -388,7 +388,7 @@ export default function App() {
 
       let res: Response;
       if (isInternalCheck || resolvedUrl.includes('/v1/check')) {
-        res = await fetch('/v1/check', {
+        res = await fetch(getApiUrl('/v1/check'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -409,7 +409,7 @@ export default function App() {
         if (['POST', 'PUT', 'PATCH'].includes(activeRequest.method) && activeRequest.bodyJson) {
           fetchOptions.body = activeRequest.bodyJson;
         }
-        res = await fetch(fetchUrl, fetchOptions);
+        res = await fetch(getApiUrl(fetchUrl), fetchOptions);
       } else {
         // External Proxy Request
         let parsedPayloadBody: any = undefined;
@@ -421,7 +421,7 @@ export default function App() {
           }
         }
 
-        res = await fetch('/v1/proxy', {
+        res = await fetch(getApiUrl('/v1/proxy'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

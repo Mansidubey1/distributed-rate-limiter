@@ -96,3 +96,9 @@ export function calculatePercentile(values: number[], percentile: number): numbe
   const index = Math.ceil((percentile / 100) * sorted.length) - 1;
   return Number(sorted[Math.max(0, index)].toFixed(2));
 }
+
+export function getApiUrl(path: string): string {
+  const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  if (!base) return path;
+  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+}
